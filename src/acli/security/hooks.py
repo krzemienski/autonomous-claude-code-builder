@@ -9,6 +9,8 @@ Uses an allowlist approach - only explicitly permitted commands can run.
 import os
 import shlex
 
+from .validators import get_validator
+
 
 # Allowed commands for development tasks
 # Minimal set needed for the autonomous coding demo
@@ -343,17 +345,11 @@ async def bash_security_hook(input_data, tool_use_id=None, context=None):
             if not cmd_segment:
                 cmd_segment = command  # Fallback to full command
 
-            if cmd == "pkill":
-                allowed, reason = validate_pkill_command(cmd_segment)
-                if not allowed:
-                    return {"decision": "block", "reason": reason}
-            elif cmd == "chmod":
-                allowed, reason = validate_chmod_command(cmd_segment)
-                if not allowed:
-                    return {"decision": "block", "reason": reason}
-            elif cmd == "init.sh":
-                allowed, reason = validate_init_script(cmd_segment)
-                if not allowed:
-                    return {"decision": "block", "reason": reason}
+            # Get and run the validator
+            validator = get_validator(cmd)
+            if validator:
+                result = validator(cmd_segment)
+                if not result.allowed:
+                    return {"decision": "block", "reason": result.reason}
 
     return {}

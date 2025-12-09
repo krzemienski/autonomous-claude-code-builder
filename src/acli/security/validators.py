@@ -8,7 +8,7 @@ Uses shlex for safe parsing (prevents injection).
 
 import re
 import shlex
-from typing import NamedTuple
+from typing import Callable, NamedTuple
 
 
 # Allowed process names for pkill
@@ -134,23 +134,29 @@ def validate_init_script(command: str) -> ValidationResult:
 
     script = tokens[0]
 
-    if script == "./init.sh" or script.endswith("/init.sh"):
-        # Ensure no directory traversal
-        if ".." in script:
-            return ValidationResult(False, "Directory traversal not allowed")
+    # Only allow ./init.sh (current directory)
+    if script == "./init.sh":
         return ValidationResult(True)
+
+    # Block absolute paths and directory traversal
+    if script.startswith("/") or ".." in script:
+        return ValidationResult(False, "Only ./init.sh allowed (no absolute paths or traversal)")
+
+    # Block other variations
+    if script.endswith("/init.sh"):
+        return ValidationResult(False, f"Only ./init.sh allowed, got: {script}")
 
     return ValidationResult(False, f"Only ./init.sh allowed, got: {script}")
 
 
 # Validator registry
-VALIDATORS: dict[str, callable] = {
+VALIDATORS: dict[str, Callable[[str], ValidationResult]] = {
     "pkill": validate_pkill,
     "chmod": validate_chmod,
     "init.sh": validate_init_script,
 }
 
 
-def get_validator(command_name: str) -> callable | None:
+def get_validator(command_name: str) -> Callable[[str], ValidationResult] | None:
     """Get validator for a command, if one exists."""
     return VALIDATORS.get(command_name)
