@@ -118,19 +118,33 @@ acli run
 
 ## Step 5: Monitor Progress
 
-The dashboard shows real-time progress:
+The cyberpunk Agent Monitor TUI shows real-time progress with full agent visibility:
 
 ```
-┌──────────────────────────────────────────────────────────┐
-│                    AUTONOMOUS CLI                         │
-├────────────────────┬─────────────────────────────────────┤
-│    Tool Board      │              Logs                    │
-│ ✓ Bash (1.2s)      │ 14:32:15 [INF] Session started      │
-│ ✓ Write (0.5s)     │ 14:32:16 [TOL] Tool: Bash           │
-│ → Read (0.3s...)   │ 14:32:17 [TOL] Tool: Write          │
-├────────────────────┴─────────────────────────────────────┤
-│ Progress: 15/200 (7.5%) ████░░░░░░░░░░░░░░░░            │
-└──────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────┐
+│  ⟁ ACLI AGENT MONITOR │ ● RUNNING │ S#2 [coding] │ 05:30  │
+├────────────────────┬─────────────────────────────────────────┤
+│  AGENT HIERARCHY   │ LOGS │ F1:All F2:Tools F3:Errors F4:Text│
+│  ◆ ORCHESTRATOR    │ 14:32:15 TXT Creating structure...      │
+│  ├─ ✓ S#1 [init]  │ 14:32:16 TOL ▶ Bash npm init -y         │
+│  ╰─ ◆ S#2 [code]  │ 14:32:17 TOL ✓ Bash 150ms OK            │
+│    ⚡ Write        │ 14:32:18 TOL ▶ Write src/App.jsx         │
+│────────────────────├─────────────────────────────────────────┤
+│  ◆ CODING          │ PROGRESS ████████░░░░░░ 10/200 5.0%    │
+│  Status: running   │ Sessions: 2 │ Tools: 15 │ Errors: 0    │
+│  Duration: 5m30s   │ RECENT TOOLS                             │
+│  Tools: 15         │   ✓ Write 88ms │ → Read 23ms...         │
+├────────────────────┴─────────────────────────────────────────┤
+│ q Quit  p Pause/Resume  s Stop  ↑↓ Navigate  Enter Detail   │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Use j/k keys to navigate agents, Enter to drill into details, F1-F4 to filter logs.
+
+**Or launch the dedicated monitor in a separate terminal:**
+
+```bash
+acli monitor
 ```
 
 **Or check status manually:**

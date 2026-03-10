@@ -1,6 +1,6 @@
 # Agent Orchestration Engine
 
-Complete implementation of the 2-agent pattern with Claude Code SDK.
+Complete implementation of the 2-agent pattern with Claude Agent SDK.
 
 ## Architecture
 
@@ -299,21 +299,32 @@ from acli.core import run_autonomous_agent
 await run_autonomous_agent(project_dir, model, max_iterations)
 ```
 
-**Dashboard** (Phase 5):
+**Agent Monitor TUI**:
 ```python
-from acli.core import StreamBuffer, EventType
+from acli.tui import AgentMonitorApp
 
-buffer = orchestrator.buffer
-async for event in buffer.iter_from(0):
-    if event.type == EventType.TEXT:
-        display_text(event.text)
-    elif event.type == EventType.TOOL_START:
-        display_tool(event.tool_name)
+# Launch TUI connected to a real orchestrator
+tui = AgentMonitorApp(orchestrator=orchestrator, project_dir=project_dir)
+tui.run()
 ```
 
-**Progress** (Phase 6):
+**OrchestratorBridge** (TUI ↔ Real Orchestrator):
 ```python
-orchestrator.on_event("progress", lambda e: update_ui(e.features_done, e.features_total))
+from acli.tui.bridge import OrchestratorBridge
+
+bridge = OrchestratorBridge(orchestrator=orchestrator)
+bridge.on_event(lambda event: print(event.type, event.tool_name))
+
+# Consume real events
+await bridge.consume_events()
+```
+
+**Progress via Bridge**:
+```python
+snap = bridge.snapshot
+print(f"Features: {snap.features_done}/{snap.features_total}")
+print(f"Sessions: {snap.session_count}")
+print(f"Tool calls: {snap.total_tool_calls}")
 ```
 
 ## Files

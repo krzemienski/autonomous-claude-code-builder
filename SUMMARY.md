@@ -1,21 +1,21 @@
 # Autonomous CLI Builder - Implementation Summary
 
-**Repository**: `/Users/nick/Desktop/claude-code-builder-agents-sdk`
-**Commit**: `7516530`
-**Status**: ✅ Production Ready
-**Date**: 2025-12-08
+**Status**: Production Ready
+**SDK**: `claude-agent-sdk>=0.1.48` (latest Anthropic Agent SDK)
 
 ---
 
 ## 🎯 Project Overview
 
 Standalone Python CLI tool providing Claude Code-like autonomous coding experience with:
-- **Real-time streaming dashboard** (Rich library, 4fps)
+- **Cyberpunk Agent Monitor TUI** (Textual, full-screen, 4fps)
+- **Real-time streaming dashboard** (Rich library, fallback)
 - **Spec enhancement** (plain English → structured specs)
 - **Multi-agent coordination** with live visibility
 - **Browser automation** (Puppeteer + Playwright)
 - **Skill discovery** from ~/.claude/skills/
 - **Config integration** with ~/.claude/
+- **Claude Agent SDK** (latest `claude-agent-sdk>=0.1.48`)
 
 **Command**: `pip install -e . && acli <command>`
 
@@ -47,11 +47,12 @@ Standalone Python CLI tool providing Claude Code-like autonomous coding experien
 ├── CONTRIBUTING.md         # Developer guide
 │
 ├── src/acli/               # Main package (40 files, 5,381 lines)
-│   ├── cli.py              # Typer CLI (6 commands)
-│   ├── core/               # Agent engine (5 files)
+│   ├── cli.py              # Typer CLI (7 commands incl. monitor)
+│   ├── core/               # Agent engine (5 files, Claude Agent SDK)
+│   ├── tui/                # Cyberpunk Agent Monitor TUI (4 files + CSS)
 │   ├── spec/               # Spec enhancement (5 files)
 │   ├── security/           # Security hooks (2 files)
-│   ├── ui/                 # Rich dashboard (5 files)
+│   ├── ui/                 # Legacy Rich dashboard (5 files)
 │   ├── progress/           # Progress tracking (4 files)
 │   ├── browser/            # Browser automation (3 files)
 │   ├── integration/        # External integrations (3 files)
@@ -104,7 +105,8 @@ pip install -e .
 
 # Commands
 acli init <project>              # Initialize new project
-acli run <project>               # Run autonomous agent loop
+acli run <project>               # Run autonomous agent loop (TUI dashboard)
+acli monitor <project>           # Launch cyberpunk TUI agent monitor
 acli status <project>            # Show progress
 acli enhance <text|file>         # Enhance spec (requires API key)
 acli config <key> <value>        # Manage config

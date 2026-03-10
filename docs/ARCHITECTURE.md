@@ -4,46 +4,55 @@ This document describes the system architecture of the Autonomous CLI.
 
 ## Overview
 
-The Autonomous CLI is a multi-agent autonomous coding system that converts plain English specifications into working applications through iterative development and browser-based testing.
+The Autonomous CLI is a multi-agent autonomous coding system that converts plain English specifications into working applications through iterative development and browser-based testing. It includes a cyberpunk-themed Textual TUI for real-time agent monitoring, visualization, and drill-down analysis.
 
 ## System Diagram
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      Autonomous CLI (acli)                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌─────────────┐     ┌──────────────┐     ┌────────────────┐   │
-│  │   CLI       │────→│ Orchestrator │────→│ Dashboard (TUI)│   │
-│  │  Commands   │     │              │     │                │   │
-│  └─────────────┘     └──────────────┘     └────────────────┘   │
-│                              │                                  │
-│                              ↓                                  │
-│                      ┌───────────────┐                          │
-│                      │  Agent Session│                          │
-│                      │  (Initializer │                          │
-│                      │   or Coding)  │                          │
-│                      └───────────────┘                          │
-│                              │                                  │
-│            ┌─────────────────┼─────────────────┐                │
-│            ↓                 ↓                 ↓                │
-│    ┌───────────────┐ ┌──────────────┐ ┌──────────────┐         │
-│    │   Security    │ │   Progress   │ │   Browser    │         │
-│    │    Hooks      │ │   Tracker    │ │   Manager    │         │
-│    └───────────────┘ └──────────────┘ └──────────────┘         │
-│            │                 │                 │                │
-│            ↓                 ↓                 ↓                │
-│    ┌───────────────┐ ┌──────────────┐ ┌──────────────┐         │
-│    │  Validators   │ │feature_list  │ │ Puppeteer/   │         │
-│    │  (pkill,chmod)│ │    .json     │ │ Playwright   │         │
-│    └───────────────┘ └──────────────┘ └──────────────┘         │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                           Autonomous CLI (acli)                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌─────────────┐     ┌──────────────┐     ┌──────────────────────────────┐  │
+│  │   CLI       │────→│ Orchestrator │────→│ Agent Monitor TUI (Textual)  │  │
+│  │  Commands   │     │              │     │ ┌──────────┬───────────────┐ │  │
+│  │ (Typer)     │     │  StreamBuffer│────→│ │ Agent    │ Log Stream    │ │  │
+│  └─────────────┘     │  + Events    │     │ │ Graph    │ (full verbose)│ │  │
+│    │                  └──────────────┘     │ ├──────────┼───────────────┤ │  │
+│    │                         │             │ │ Agent    │ Stats +       │ │  │
+│    │                         ↓             │ │ Detail   │ Tool Board    │ │  │
+│    │                 ┌───────────────┐     │ └──────────┴───────────────┘ │  │
+│    │                 │  Agent Session│     └──────────────────────────────┘  │
+│    │                 │  (Initializer │                                       │
+│    │                 │   or Coding)  │     ┌──────────────────────────────┐  │
+│    │                 └───────────────┘     │ Legacy Dashboard (Rich.Live) │  │
+│    │                         │             │ (headless/fallback mode)     │  │
+│    │           ┌─────────────┼──────────┐  └──────────────────────────────┘  │
+│    │           ↓             ↓          ↓                                    │
+│    │   ┌───────────┐ ┌────────────┐ ┌──────────┐                           │
+│    │   │ Security  │ │  Progress  │ │ Browser  │                           │
+│    │   │  Hooks    │ │  Tracker   │ │ Manager  │                           │
+│    │   └───────────┘ └────────────┘ └──────────┘                           │
+│    │           │             │            │                                  │
+│    │           ↓             ↓            ↓                                  │
+│    │   ┌───────────┐ ┌────────────┐ ┌──────────┐                           │
+│    │   │Validators │ │feature_list│ │Puppeteer/│                           │
+│    │   │(pkill,    │ │   .json    │ │Playwright│                           │
+│    │   │ chmod)    │ └────────────┘ └──────────┘                           │
+│    │   └───────────┘                                                        │
+│    │                                                                         │
+│    └──→ OrchestratorBridge (TUI ↔ Real Orchestrator)                        │
+│         ├─ AgentNode hierarchy (live agent tree)                             │
+│         ├─ OrchestratorSnapshot (point-in-time state)                        │
+│         ├─ Event callbacks (real StreamBuffer → TUI widgets)                 │
+│         └─ Control commands (pause/resume/stop → real orchestrator)          │
+│                                                                              │
+└──────────────────────────────────────────────────────────────────────────────┘
                               │
                               ↓
                     ┌──────────────────┐
-                    │  Claude Code SDK │
-                    │  (Anthropic API) │
+                    │ Claude Agent SDK │
+                    │ (Anthropic API)  │
                     └──────────────────┘
 ```
 
@@ -55,10 +64,12 @@ The Autonomous CLI is a multi-agent autonomous coding system that converts plain
 
 **Commands**:
 - `init` - Initialize new project
-- `run` - Run autonomous coding loop
+- `run` - Run autonomous coding loop (with optional TUI dashboard)
+- `monitor` - Launch cyberpunk TUI for real-time agent monitoring
 - `status` - Show progress
 - `enhance` - Spec enhancement
 - `config` - Configuration management
+- `list-skills` - Discover available skills
 
 **Implementation**: Typer-based CLI with subcommands
 
@@ -71,371 +82,164 @@ The Autonomous CLI is a multi-agent autonomous coding system that converts plain
 - Select appropriate agent (initializer vs coding)
 - Manage session lifecycle
 - Coordinate with progress tracker
-- Handle dashboard updates
+- Feed events to StreamBuffer for TUI consumption
+- Handle pause/resume/stop controls
 
-**Key Methods**:
+**Key Class**:
 ```python
-async def run() -> None:
-    """Main orchestration loop."""
-
-def is_first_run() -> bool:
-    """Check if this is the first run."""
-
-async def run_initializer_session() -> None:
-    """Run initializer agent."""
-
-async def run_coding_session() -> None:
-    """Run coding agent."""
+class AgentOrchestrator:
+    async def run_loop() -> None
+    async def run_single_session() -> tuple[str, str]
+    def request_pause() -> None
+    def request_stop() -> None
+    def resume() -> None
+    def get_status() -> dict[str, Any]
 ```
 
-### 3. Agent Session (`acli.core.session`)
+### 3. Agent Session (`acli.core.agent`)
 
 **Purpose**: Execute single agent session with Claude
 
-**Responsibilities**:
-- Load appropriate prompt template
-- Create Claude session with tools
-- Stream responses to dashboard
-- Execute tool calls
-- Handle security hooks
-
 **Session Types**:
 
-1. **Initializer Session**:
-   - Reads `app_spec.txt`
-   - Generates `feature_list.json` (~200 features)
-   - Creates project structure
-   - Generates `init.sh` script
+1. **Initializer Session**: Reads `app_spec.txt`, generates `feature_list.json` (~200 features), creates project structure
+2. **Coding Session**: Picks ONE incomplete feature, implements, tests, marks passing, commits
 
-2. **Coding Session**:
-   - Reads `feature_list.json`
-   - Picks ONE incomplete feature
-   - Implements feature with browser testing
-   - Marks feature as passing
-   - Commits changes
+### 4. Agent Monitor TUI (`acli.tui`)
 
-### 4. Security Layer (`acli.security`)
+**Purpose**: Full-screen cyberpunk-themed terminal dashboard for real-time agent monitoring
 
-**Purpose**: Prevent dangerous operations
+**Technology**: Textual >=1.0 (Python TUI framework, async-native, CSS-styled)
 
 **Components**:
 
-1. **Security Hook** (`hooks.py`):
-   - Pre-tool-use validation
-   - Command allowlist enforcement
-   - Delegates to validators
+| Component | File | Purpose |
+|-----------|------|---------|
+| `AgentMonitorApp` | `app.py` | Main Textual app with keybindings |
+| `OrchestratorBridge` | `bridge.py` | Direct connection to real orchestrator |
+| `AgentGraph` | `widgets.py` | ASCII agent hierarchy visualization |
+| `AgentDetail` | `widgets.py` | Deep drill-down into selected agent |
+| `LogStream` | `widgets.py` | Full-verbosity event log streaming |
+| `StatsPanel` | `widgets.py` | Progress, metrics, tool board |
+| `CyberHeader` | `widgets.py` | System status bar |
+| Cyberpunk Theme | `cyberpunk.tcss` | 408-line CSS theme |
 
-2. **Validators** (`validators.py`):
-   - `validate_pkill()` - Only dev processes
-   - `validate_chmod()` - Only +x mode
-   - `validate_init_script()` - Only ./init.sh
-
-**Allowlist**:
-```python
-ALLOWED_COMMANDS = {
-    "ls", "cat", "head", "tail", "wc", "grep",  # File inspection
-    "cp", "mkdir", "chmod",                      # File operations
-    "npm", "node",                               # Node.js
-    "git",                                       # Version control
-    "ps", "lsof", "sleep", "pkill",             # Process management
-    "init.sh",                                   # Script execution
-}
+**Layout**:
+```
+┌──────────────────────────────────────────────────────────────┐
+│  ⟁ ACLI AGENT MONITOR │ ● RUNNING │ S#2 [coding] │ 05:30  │
+├────────────────────┬─────────────────────────────────────────┤
+│  AGENT HIERARCHY   │ LOGS │ F1:All F2:Tools F3:Errors F4:Text│
+│  ◆ ORCHESTRATOR    │ 14:32:15 TXT Creating structure...      │
+│  ├─ ✓ S#1 [init]  │ 14:32:16 TOL ▶ Bash npm init -y         │
+│  ╰─ ◆ S#2 [code]  │ 14:32:17 TOL ✓ Bash 150ms OK            │
+│    ⚡ Write        │ 14:32:18 TOL ▶ Write src/App.jsx         │
+│────────────────────├─────────────────────────────────────────┤
+│  ◆ CODING          │ PROGRESS ████████░░░░░░ 10/200 5.0%    │
+│  Status: running   │ Sessions: 2 │ Tools: 15 │ Errors: 0    │
+│  Tools: 15         │ RECENT TOOLS                             │
+│  Duration: 5m30s   │   ✓ Write 88ms │ ✓ Bash 150ms          │
+├────────────────────┴─────────────────────────────────────────┤
+│ q Quit  p Pause/Resume  s Stop  ↑↓ Navigate  Enter Detail   │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-### 5. Progress Tracking (`acli.progress`)
+**Keyboard Navigation**:
+| Key | Action |
+|-----|--------|
+| `q` | Quit |
+| `p` | Pause/Resume orchestrator |
+| `s` | Stop orchestrator |
+| `j`/`k` or `↑`/`↓` | Navigate agents |
+| `Enter` | Drill into selected agent |
+| `F1`-`F4` | Switch log filter (All/Tools/Errors/Text) |
+| `Tab` | Cycle focus |
 
-**Purpose**: Track feature implementation progress
+**Cyberpunk Color Palette**:
+| Color | Hex | Usage |
+|-------|-----|-------|
+| Deep Navy | `#000b1e` | Background |
+| Neon Cyan | `#0abdc6` | Primary, borders |
+| Hot Pink | `#ea00d9` | Tool names, highlights |
+| Matrix Green | `#00ff41` | Success, running |
+| Neon Red | `#ff003c` | Errors, blocked |
+| Amber | `#f5a623` | Warnings, paused |
+| Ice White | `#d7fffe` | Primary text |
+| Steel Gray | `#4a6670` | Muted, timestamps |
+| Electric Blue | `#133e7c` | Borders, connectors |
 
-**Components**:
+### 5. Legacy Dashboard (`acli.ui`)
 
-1. **Tracker** (`tracker.py`):
-   ```python
-   def get_total_count() -> int
-   def get_completed_count() -> int
-   def get_incomplete_count() -> int
-   def get_progress_percentage() -> float
-   ```
+**Purpose**: Lightweight Rich.Live-based dashboard (headless/fallback mode)
 
-2. **Feature List** (`feature_list.py`):
-   - JSON format storage
-   - Feature schema validation
-   - Progress persistence
+Used when `--no-dashboard` or `--headless` flags are set.
 
-3. **Display** (`display.py`):
-   - Progress bar rendering
-   - Status formatting
+### 6. Security Layer (`acli.security`)
 
-### 6. Browser Automation (`acli.browser`)
+**Purpose**: Prevent dangerous operations via defense-in-depth
 
-**Purpose**: Enable browser testing
+**Layers**:
+1. OS-level sandbox
+2. Filesystem restriction (project directory only)
+3. 16-command allowlist
+4. Per-command validators (pkill, chmod, init.sh)
+5. Shlex parsing to prevent injection
 
-**Components**:
+### 7. Streaming Infrastructure (`acli.core.streaming`)
 
-1. **Manager** (`manager.py`):
-   - Provider selection (Puppeteer/Playwright)
-   - Wrapper instantiation
-   - Tool loading
+**Purpose**: Event-driven communication between orchestrator and all UI layers
 
-2. **Puppeteer Wrapper** (`puppeteer.py`):
-   ```python
-   def navigate(url: str) -> dict
-   def click(selector: str) -> dict
-   def fill(selector: str, value: str) -> dict
-   def screenshot(name: str) -> dict
-   ```
-
-3. **Playwright Wrapper** (`playwright.py`):
-   ```python
-   def navigate(url: str) -> dict
-   def snapshot() -> dict
-   def click(uid: str, element: str) -> dict
-   def fill(uid: str, element: str, value: str) -> dict
-   ```
-
-### 7. Dashboard (`acli.ui`)
-
-**Purpose**: Real-time visibility
-
-**Components**:
-
-1. **Dashboard** (`dashboard.py`):
-   - Multi-pane layout
-   - Live updates
-   - Tool board + Logs + Progress
-
-2. **Tool Board** (`tool_board.py`):
-   - Tool execution tracking
-   - Status indicators
-   - Timing information
-
-3. **Logs** (`logs.py`):
-   - Streaming log display
-   - Level filtering
-   - Timestamps
-
-4. **Progress** (`progress.py`):
-   - Progress bar
-   - Percentage display
-
-### 8. Spec Enhancement (`acli.spec`)
-
-**Purpose**: Convert plain text to structured specs
-
-**Components**:
-
-1. **Enhancer** (`enhancer.py`):
-   - Interactive prompting
-   - Claude-powered conversion
-   - JSON generation
-
-2. **Validator** (`validator.py`):
-   - Schema validation
-   - Required fields check
-
-3. **Schemas** (`schemas.py`):
-   - Pydantic models
-   - Type definitions
-
-## Data Flow
-
-### Initialization Flow
-
+**Data Flow**:
 ```
-User: acli init my_app
-  ↓
-CLI: Create project directory
-  ↓
-CLI: Create app_spec.txt
-  ↓
-CLI: Optionally enhance spec
-  ↓
-Project ready for development
+Claude Agent SDK → StreamingHandler → StreamBuffer → OrchestratorBridge → TUI Widgets
+                                                  ↘ Legacy Dashboard (Rich.Live)
 ```
 
-### Coding Loop Flow
-
-```
-User: acli run
-  ↓
-Orchestrator: Check for feature_list.json
-  ↓
-┌─────────────────────────────────────┐
-│ First Run? (no feature_list.json)  │
-└─────────────────────────────────────┘
-  │
-  ├─ YES: Run Initializer Session
-  │    ↓
-  │  Read app_spec.txt
-  │    ↓
-  │  Generate feature_list.json (~200 features)
-  │    ↓
-  │  Create init.sh
-  │    ↓
-  │  Initialize project
-  │
-  └─ NO: Run Coding Session
-       ↓
-     Read feature_list.json
-       ↓
-     Pick ONE incomplete feature
-       ↓
-     Implement feature
-       ↓
-     Test with browser
-       ↓
-     Mark feature as passing
-       ↓
-     Commit changes
-       ↓
-     Loop until all features complete
-```
-
-### Tool Execution Flow
-
-```
-Agent decides to use tool
-  ↓
-Security Hook: Pre-tool-use validation
-  ↓
-┌─────────────────┐
-│ Tool = Bash?    │
-└─────────────────┘
-  │
-  ├─ YES: Extract commands
-  │    ↓
-  │  Check against allowlist
-  │    ↓
-  │  Run validators if needed
-  │    ↓
-  │  Allow or Block
-  │
-  └─ NO: Allow (no validation)
-```
-
-## Security Architecture
-
-### Defense-in-Depth
-
-1. **Command Allowlist**: Only 16 commands permitted
-2. **Per-Command Validators**: Extra validation for sensitive commands
-3. **Shlex Parsing**: Prevent injection attacks
-4. **Filesystem Restriction**: Project directory only
-5. **OS-Level Sandbox**: Bash isolation
-
-### Security Boundaries
-
-```
-┌───────────────────────────────────────┐
-│        Agent (Claude Code SDK)        │
-└───────────────────────────────────────┘
-              │
-              ↓ Tool Call
-┌───────────────────────────────────────┐
-│      Pre-Tool-Use Security Hook       │
-│   - Command extraction                │
-│   - Allowlist check                   │
-│   - Validator dispatch                │
-└───────────────────────────────────────┘
-              │
-              ↓ Validated
-┌───────────────────────────────────────┐
-│        Tool Execution Layer           │
-│   - Sandbox environment               │
-│   - Project directory restriction     │
-└───────────────────────────────────────┘
-```
-
-## Configuration
-
-### Config Hierarchy
-
-1. **User config**: `~/.config/acli/config.json`
-2. **Project config**: `.acli/config.json` (future)
-3. **Defaults**: Hardcoded in `acli.config`
-
-### Config Schema
-
-```json
-{
-  "model": "claude-sonnet-4-20250514",
-  "max_iterations": null,
-  "browser_provider": "puppeteer",
-  "dashboard": true,
-  "headless": false
-}
-```
+**Event Types**: TEXT, TOOL_START, TOOL_END, TOOL_BLOCKED, ERROR, SESSION_START, SESSION_END, PROGRESS
 
 ## File Structure
 
-### Project Directory Layout
-
 ```
-my_app/
-├── app_spec.txt          # Original specification
-├── feature_list.json     # Progress tracking
-├── init.sh               # Setup script (generated)
-├── src/                  # Application code
-├── package.json          # Dependencies
-└── .git/                 # Version control
-```
-
-### Feature List Schema
-
-```json
-[
-  {
-    "id": 1,
-    "component": "Login",
-    "description": "Email input accepts valid email format",
-    "passes": true
-  }
-]
+src/acli/
+├── cli.py                     # Typer CLI (7 commands)
+├── core/                      # Agent orchestration engine
+│   ├── orchestrator.py        # Multi-agent coordinator
+│   ├── agent.py               # Agent session logic (Claude Agent SDK)
+│   ├── client.py              # SDK client configuration
+│   ├── session.py             # Session state management
+│   └── streaming.py           # Event streaming + buffering
+├── tui/                       # Cyberpunk Agent Monitor TUI
+│   ├── app.py                 # Main Textual application
+│   ├── bridge.py              # OrchestratorBridge (real data only)
+│   ├── widgets.py             # All TUI widgets
+│   └── cyberpunk.tcss         # Cyberpunk Neon CSS theme
+├── ui/                        # Legacy Rich-based dashboard
+├── security/                  # Defense-in-depth security
+├── spec/                      # Spec enhancement
+├── progress/                  # Progress tracking
+├── browser/                   # Browser automation (Puppeteer/Playwright)
+├── integration/               # External integrations
+├── prompts/                   # Prompt templates
+└── utils/                     # Logger, event emitter
 ```
 
 ## Extension Points
 
-### Adding New Commands
+### Adding New TUI Widgets
 
-1. Add command to `ALLOWED_COMMANDS`
-2. Create validator if needed
-3. Register in `VALIDATORS`
+1. Create widget class in `tui/widgets.py`
+2. Add to `app.py` compose method
+3. Wire up to `OrchestratorBridge` data
+4. Style in `cyberpunk.tcss`
 
-### Adding New MCP Tools
+### Adding New Agent Types
 
-1. Implement wrapper in `acli.browser`
-2. Register in `BrowserManager`
-3. Update tool mapping
+1. Create prompt template in `prompts/templates/`
+2. Add session type to orchestrator
+3. Bridge automatically picks up new sessions via StreamBuffer events
 
-### Custom Prompt Templates
+### Adding New Commands to Security Allowlist
 
-1. Create template in `prompts/templates/`
-2. Reference in orchestrator
-3. Add session type
-
-## Performance Considerations
-
-### Dashboard Updates
-
-- Debounced updates (100ms)
-- Incremental rendering
-- Tool board limited to 10 recent tools
-
-### Progress Tracking
-
-- In-memory caching
-- File writes on change only
-- JSON streaming for large files
-
-### Browser Automation
-
-- Headless mode by default
-- Screenshot optimization
-- Page navigation caching
-
-## Future Enhancements
-
-1. **Pause/Resume**: Mid-session control
-2. **Tool Approval**: Manual approval mode
-3. **Spec Editing**: Mid-flight spec changes
-4. **Multi-Project**: Parallel project support
-5. **Plugin System**: Custom tool integration
+1. Add command to `ALLOWED_COMMANDS` in `hooks.py`
+2. Create validator if needed in `validators.py`
+3. Register in `VALIDATORS` dict

@@ -20,7 +20,10 @@ Python API reference for Autonomous CLI.
 - [Spec](#spec)
   - [Enhancer](#specenhancer)
   - [Validator](#specvalidator)
-- [UI](#ui)
+- [TUI](#tui)
+  - [AgentMonitorApp](#agentmonitorapp)
+  - [OrchestratorBridge](#orchestratorbridge)
+- [UI (Legacy)](#ui-legacy)
   - [Dashboard](#dashboard)
   - [ToolBoard](#toolboard)
 
@@ -63,7 +66,7 @@ def __init__(
 
 **Parameters**:
 - `project_dir`: Project directory path
-- `client`: Claude Code SDK client instance
+- `client`: Claude Agent SDK client instance
 - `model`: Claude model identifier
 - `max_iterations`: Maximum number of sessions (None = unlimited)
 - `dashboard`: Whether to show TUI dashboard
@@ -140,7 +143,7 @@ Streams responses and executes tool calls.
 
 **Module**: `acli.core.client`
 
-Wrapper around Claude Code SDK client.
+Wrapper around Claude Agent SDK client.
 
 ```python
 from acli.core.client import create_client
@@ -155,7 +158,7 @@ client = create_client(
 
 ##### `create_client(api_key: str, model: str) -> AgentClient`
 
-Create a configured Claude Code SDK client.
+Create a configured Claude Agent SDK client.
 
 ```python
 client = create_client(
@@ -569,7 +572,118 @@ else:
 
 ---
 
-## UI
+## TUI
+
+### AgentMonitorApp
+
+**Module**: `acli.tui.app`
+
+Cyberpunk-themed Textual TUI for real-time agent monitoring.
+
+```python
+from acli.tui import AgentMonitorApp
+from acli.core.orchestrator import AgentOrchestrator
+
+orchestrator = AgentOrchestrator(project_dir=Path("./my-project"))
+tui = AgentMonitorApp(orchestrator=orchestrator, project_dir=Path("./my-project"))
+tui.run()
+```
+
+#### Constructor
+
+```python
+def __init__(
+    self,
+    orchestrator: AgentOrchestrator | None = None,
+    project_dir: Path | None = None,
+) -> None
+```
+
+**Parameters**:
+- `orchestrator`: Real ACLI orchestrator instance (None for view-only mode)
+- `project_dir`: Project directory for loading state from disk
+
+#### Keybindings
+
+| Key | Action |
+|-----|--------|
+| `q` | Quit |
+| `p` | Pause/Resume orchestrator |
+| `s` | Stop orchestrator |
+| `j`/`k` or arrows | Navigate agents |
+| `Enter` | Drill into selected agent |
+| `F1`-`F4` | Log filter (All/Tools/Errors/Text) |
+
+---
+
+### OrchestratorBridge
+
+**Module**: `acli.tui.bridge`
+
+Direct bridge between the TUI and the real orchestrator.
+
+```python
+from acli.tui.bridge import OrchestratorBridge
+
+bridge = OrchestratorBridge(orchestrator=orchestrator)
+
+# Register callbacks for real events
+bridge.on_event(lambda event: print(event.type))
+
+# Get point-in-time snapshot
+snap = bridge.snapshot
+print(f"Features: {snap.features_done}/{snap.features_total}")
+print(f"Sessions: {snap.session_count}")
+
+# Look up agents
+agent = bridge.get_agent_by_id("session-2")
+active = bridge.get_active_agents()
+
+# Send commands to real orchestrator
+bridge.send_command("pause")
+bridge.send_command("resume")
+bridge.send_command("stop")
+```
+
+#### Key Classes
+
+##### `AgentNode`
+
+```python
+@dataclass
+class AgentNode:
+    agent_id: str
+    agent_type: str      # "orchestrator", "initializer", "coding"
+    status: str          # "idle", "running", "completed", "error", "paused"
+    session_id: int
+    tool_calls: int
+    current_tool: str
+    features_done: int
+    features_total: int
+    errors: list[str]
+    children: list[AgentNode]
+```
+
+##### `OrchestratorSnapshot`
+
+```python
+@dataclass
+class OrchestratorSnapshot:
+    running: bool
+    paused: bool
+    project_dir: str
+    model: str
+    session_count: int
+    features_done: int
+    features_total: int
+    total_tool_calls: int
+    total_errors: int
+    events_processed: int
+```
+
+---
+
+## UI (Legacy)
 
 ### Dashboard
 
