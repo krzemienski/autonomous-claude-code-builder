@@ -109,7 +109,7 @@ class AgentOrchestrator:
 
 **Purpose**: Full-screen cyberpunk-themed terminal dashboard for real-time agent monitoring
 
-**Technology**: Textual 8.x (Python TUI framework, async-native, CSS-styled)
+**Technology**: Textual >=1.0 (Python TUI framework, async-native, CSS-styled)
 
 **Components**:
 

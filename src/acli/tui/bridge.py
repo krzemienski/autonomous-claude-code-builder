@@ -8,14 +8,17 @@ No mocks. No fakes. Reads live StreamBuffer events and orchestrator state.
 
 import asyncio
 import json
+import logging
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Callable
 
 from ..core.orchestrator import AgentOrchestrator
-from ..core.session import ProjectState, SessionState, get_project_state
+from ..core.session import get_project_state
 from ..core.streaming import EventType, StreamBuffer, StreamEvent
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -151,8 +154,8 @@ class OrchestratorBridge:
             # Load feature progress from real feature_list.json
             self._load_feature_progress()
 
-        except Exception:
-            pass
+        except (json.JSONDecodeError, KeyError, AttributeError) as e:
+            logger.debug("Failed to load persisted state: %s", e)
 
     def _load_feature_progress(self) -> None:
         """Load progress from real feature_list.json."""
@@ -177,10 +180,10 @@ class OrchestratorBridge:
             )
             self._root.features_total = self._snapshot.features_total
             self._root.features_done = self._snapshot.features_done
-        except Exception:
-            pass
+        except (json.JSONDecodeError, KeyError, TypeError) as e:
+            logger.debug("Failed to load feature progress: %s", e)
 
-    def _handle_event(self, event: StreamEvent) -> None:
+    def handle_event(self, event: StreamEvent) -> None:
         """Process a real event from the orchestrator's stream."""
         self._snapshot.events_processed += 1
 
@@ -206,6 +209,12 @@ class OrchestratorBridge:
                 self._current_agent.status = "completed"
                 self._current_agent.end_time = event.timestamp
                 self._current_agent = None
+
+            # Update snapshot and root to reflect no active agents
+            has_active = any(c.status == "running" for c in self._root.children)
+            if not has_active:
+                self._snapshot.running = False
+                self._root.status = "idle"
 
         elif event.type == EventType.TOOL_START:
             self._snapshot.total_tool_calls += 1
@@ -248,7 +257,7 @@ class OrchestratorBridge:
                 if asyncio.iscoroutine(result):
                     asyncio.ensure_future(result)
             except Exception:
-                pass
+                logger.debug("Event callback error for %s", event.type, exc_info=True)
 
     async def consume_events(self, stop_event: asyncio.Event | None = None) -> None:
         """
@@ -271,7 +280,7 @@ class OrchestratorBridge:
                 if stop_event.is_set():
                     break
                 self._event_index += 1
-                self._handle_event(event)
+                self.handle_event(event)
         finally:
             self._running = False
 

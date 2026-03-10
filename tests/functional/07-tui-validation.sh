@@ -13,8 +13,8 @@ echo "=== Test 07: TUI Agent Monitor Validation ==="
 
 echo "→ Checking Textual is installed..."
 if ! python3 -c "import textual; print(f'  Textual version: {textual.__version__}')" 2>/dev/null; then
-    echo "  Installing textual..."
-    pip install "textual>=1.0.0" > /dev/null 2>&1
+    echo "✗ Textual is not installed. Install project dependencies first: pip install -e ."
+    exit 1
 fi
 echo "✓ Textual available"
 
@@ -99,7 +99,7 @@ events = [
 ]
 
 for event in events:
-    bridge._handle_event(event)
+    bridge.handle_event(event)
 
 assert bridge.snapshot.events_processed == 10, f'Events: {bridge.snapshot.events_processed}'
 assert bridge.snapshot.total_tool_calls == 1, f'Tools: {bridge.snapshot.total_tool_calls}'
@@ -148,11 +148,11 @@ tmp = Path(tempfile.mkdtemp())
 bridge = OrchestratorBridge(project_dir=tmp)
 
 # Build real hierarchy
-bridge._handle_event(StreamEvent(type=EventType.SESSION_START, session_id=1, session_type='initializer'))
-bridge._handle_event(StreamEvent(type=EventType.SESSION_END, session_id=1))
-bridge._handle_event(StreamEvent(type=EventType.SESSION_START, session_id=2, session_type='coding'))
-bridge._handle_event(StreamEvent(type=EventType.TOOL_START, tool_name='Write'))
-bridge._handle_event(StreamEvent(type=EventType.PROGRESS, features_done=10, features_total=100))
+bridge.handle_event(StreamEvent(type=EventType.SESSION_START, session_id=1, session_type='initializer'))
+bridge.handle_event(StreamEvent(type=EventType.SESSION_END, session_id=1))
+bridge.handle_event(StreamEvent(type=EventType.SESSION_START, session_id=2, session_type='coding'))
+bridge.handle_event(StreamEvent(type=EventType.TOOL_START, tool_name='Write'))
+bridge.handle_event(StreamEvent(type=EventType.PROGRESS, features_done=10, features_total=100))
 
 graph = AgentGraph(bridge)
 rendered = graph.render_graph()
@@ -195,9 +195,9 @@ bridge = OrchestratorBridge(project_dir=tmp)
 received = []
 bridge.on_event(lambda e: received.append(e))
 
-bridge._handle_event(StreamEvent(type=EventType.TEXT, text='hello'))
-bridge._handle_event(StreamEvent(type=EventType.TOOL_START, tool_name='Bash'))
-bridge._handle_event(StreamEvent(type=EventType.SESSION_START, session_id=1, session_type='coding'))
+bridge.handle_event(StreamEvent(type=EventType.TEXT, text='hello'))
+bridge.handle_event(StreamEvent(type=EventType.TOOL_START, tool_name='Bash'))
+bridge.handle_event(StreamEvent(type=EventType.SESSION_START, session_id=1, session_type='coding'))
 
 assert len(received) == 3, f'Expected 3 callbacks, got {len(received)}'
 assert received[0].text == 'hello'
@@ -237,7 +237,7 @@ async def test():
     tmp = Path(tempfile.mkdtemp())
     bridge = OrchestratorBridge(project_dir=tmp)
     for event in events:
-        bridge._handle_event(event)
+        bridge.handle_event(event)
 
     assert bridge.snapshot.events_processed == 6
     assert bridge.snapshot.total_tool_calls == 1
@@ -318,9 +318,9 @@ print('  Corrupt feature_list.json: survived ✓')
 
 # Empty events
 bridge3 = OrchestratorBridge(project_dir=tmp)
-bridge3._handle_event(StreamEvent(type=EventType.TEXT, text=''))
-bridge3._handle_event(StreamEvent(type=EventType.TOOL_START, tool_name=''))
-bridge3._handle_event(StreamEvent(type=EventType.TOOL_END, tool_name=''))
+bridge3.handle_event(StreamEvent(type=EventType.TEXT, text=''))
+bridge3.handle_event(StreamEvent(type=EventType.TOOL_START, tool_name=''))
+bridge3.handle_event(StreamEvent(type=EventType.TOOL_END, tool_name=''))
 assert bridge3.snapshot.events_processed == 3
 print('  Empty events: survived ✓')
 " || { echo "✗ Resilience test failed"; rm -rf "$TMPDIR2"; exit 1; }

@@ -9,17 +9,21 @@ Connects directly to the real ACLI orchestrator — no mocks.
 """
 
 import asyncio
+import logging
 from pathlib import Path
 
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
+from textual.css.query import NoMatches
 from textual.widgets import Footer, Static
 
 from ..core.orchestrator import AgentOrchestrator
 from ..core.streaming import StreamEvent
 from .bridge import OrchestratorBridge
 from .widgets import AgentDetail, AgentGraph, CyberHeader, LogStream, StatsPanel
+
+logger = logging.getLogger(__name__)
 
 
 class AgentMonitorApp(App):
@@ -35,7 +39,7 @@ class AgentMonitorApp(App):
         p       - Pause/Resume orchestrator
         s       - Stop orchestrator
         j/k     - Navigate agents (down/up)
-        1-4     - Switch log filter
+        F1-F4   - Switch log filter (All/Tools/Errors/Text)
         Tab     - Cycle focus between panels
         Enter   - Drill into selected agent
     """
@@ -123,12 +127,13 @@ class AgentMonitorApp(App):
 
     def _on_bridge_event(self, event: StreamEvent) -> None:
         """Handle a real event from the orchestrator bridge."""
-        # Feed event to log stream
         try:
             log_widget = self.query_one("#log-stream-widget", LogStream)
             log_widget.write_event(event)
-        except Exception:
+        except NoMatches:
             pass
+        except Exception:
+            logger.debug("Error handling bridge event", exc_info=True)
 
     def _refresh_all_widgets(self) -> None:
         """Refresh all widgets from live data."""
@@ -137,25 +142,25 @@ class AgentMonitorApp(App):
         try:
             header = self.query_one(CyberHeader)
             header.update_from_snapshot(snap)
-        except Exception:
+        except NoMatches:
             pass
 
         try:
             graph = self.query_one("#agent-graph-widget", AgentGraph)
             graph.refresh_graph()
-        except Exception:
+        except NoMatches:
             pass
 
         try:
             detail = self.query_one("#agent-detail-widget", AgentDetail)
             detail.refresh_detail()
-        except Exception:
+        except NoMatches:
             pass
 
         try:
             stats = self.query_one("#stats-panel-widget", StatsPanel)
             stats.refresh_stats()
-        except Exception:
+        except NoMatches:
             pass
 
     # ── Keybinding Actions ──────────────────────────────────
@@ -190,13 +195,13 @@ class AgentMonitorApp(App):
                 graph = self.query_one("#agent-graph-widget", AgentGraph)
                 graph.selected_agent_id = agent.agent_id
                 graph.refresh_graph()
-            except Exception:
+            except NoMatches:
                 pass
 
             try:
                 detail = self.query_one("#agent-detail-widget", AgentDetail)
                 detail.show_agent(agent.agent_id)
-            except Exception:
+            except NoMatches:
                 pass
 
     def action_select_prev_agent(self) -> None:
@@ -210,13 +215,13 @@ class AgentMonitorApp(App):
                 graph = self.query_one("#agent-graph-widget", AgentGraph)
                 graph.selected_agent_id = agent.agent_id
                 graph.refresh_graph()
-            except Exception:
+            except NoMatches:
                 pass
 
             try:
                 detail = self.query_one("#agent-detail-widget", AgentDetail)
                 detail.show_agent(agent.agent_id)
-            except Exception:
+            except NoMatches:
                 pass
 
     def action_drill_into_agent(self) -> None:
@@ -227,7 +232,7 @@ class AgentMonitorApp(App):
             try:
                 detail = self.query_one("#agent-detail-widget", AgentDetail)
                 detail.show_agent(agent.agent_id)
-            except Exception:
+            except NoMatches:
                 pass
 
     def action_filter_all(self) -> None:
@@ -235,7 +240,7 @@ class AgentMonitorApp(App):
             log = self.query_one("#log-stream-widget", LogStream)
             log.set_filter("all")
             self.notify("Log filter: ALL", severity="information")
-        except Exception:
+        except NoMatches:
             pass
 
     def action_filter_tools(self) -> None:
@@ -243,7 +248,7 @@ class AgentMonitorApp(App):
             log = self.query_one("#log-stream-widget", LogStream)
             log.set_filter("tools")
             self.notify("Log filter: TOOLS", severity="information")
-        except Exception:
+        except NoMatches:
             pass
 
     def action_filter_errors(self) -> None:
@@ -251,7 +256,7 @@ class AgentMonitorApp(App):
             log = self.query_one("#log-stream-widget", LogStream)
             log.set_filter("errors")
             self.notify("Log filter: ERRORS", severity="information")
-        except Exception:
+        except NoMatches:
             pass
 
     def action_filter_text(self) -> None:
@@ -259,7 +264,7 @@ class AgentMonitorApp(App):
             log = self.query_one("#log-stream-widget", LogStream)
             log.set_filter("text")
             self.notify("Log filter: TEXT", severity="information")
-        except Exception:
+        except NoMatches:
             pass
 
     def action_refresh_all(self) -> None:

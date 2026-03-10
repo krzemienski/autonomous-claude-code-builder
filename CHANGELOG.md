@@ -77,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Dependencies
 
-- `claude-agent-sdk>=0.0.25` - Claude Code integration
+- `claude-agent-sdk>=0.1.48` - Claude Agent SDK integration
 - `rich>=13.7.0` - Terminal UI
 - `typer>=0.9.0` - CLI framework
 - `pydantic>=2.5.0` - Data validation

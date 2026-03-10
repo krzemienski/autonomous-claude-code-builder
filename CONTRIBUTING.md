@@ -484,7 +484,7 @@ When contributing:
 - [Architecture](docs/ARCHITECTURE.md)
 - [API Reference](docs/API.md)
 - [Quick Start](docs/QUICKSTART.md)
-- [Claude Agent SDK](https://github.com/anthropics/claude-code-sdk)
+- [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk)
 
 ## Recognition
 

@@ -14,6 +14,7 @@ Commands:
 """
 
 import asyncio
+import sys
 from pathlib import Path
 from typing import Annotated, Optional
 
@@ -34,6 +35,43 @@ app = typer.Typer(
 )
 
 console = Console()
+
+
+async def _run_tui_with_orchestrator(
+    orchestrator: "AgentOrchestrator",
+    project_dir: Path,
+) -> None:
+    """Run the TUI and orchestrator concurrently, cancelling the other when one completes."""
+    from .tui import AgentMonitorApp
+
+    tui = AgentMonitorApp(
+        orchestrator=orchestrator,
+        project_dir=project_dir,
+    )
+
+    tui_task = asyncio.create_task(tui.run_async())
+    orch_task = asyncio.create_task(orchestrator.run_loop())
+
+    try:
+        done, pending = await asyncio.wait(
+            [tui_task, orch_task],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for task in pending:
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+        # Re-raise exceptions from completed tasks
+        for task in done:
+            if task.exception():
+                raise task.exception()
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logger.error("TUI/orchestrator error: %s", e)
+        sys.exit(1)
 
 
 def version_callback(value: bool) -> None:
@@ -232,32 +270,7 @@ def run(
 
     if dashboard and not headless:
         # Launch full cyberpunk TUI
-        from .tui import AgentMonitorApp
-
-        tui = AgentMonitorApp(
-            orchestrator=orchestrator,
-            project_dir=project_dir,
-        )
-
-        async def run_with_tui():
-            tui_task = asyncio.create_task(tui.run_async())
-            orch_task = asyncio.create_task(orchestrator.run_loop())
-
-            try:
-                done, pending = await asyncio.wait(
-                    [tui_task, orch_task],
-                    return_when=asyncio.FIRST_COMPLETED,
-                )
-                for task in pending:
-                    task.cancel()
-                    try:
-                        await task
-                    except asyncio.CancelledError:
-                        pass
-            except Exception:
-                pass
-
-        asyncio.run(run_with_tui())
+        asyncio.run(_run_tui_with_orchestrator(orchestrator, project_dir))
     else:
         # Headless mode — run orchestrator with console output
         from .ui import Dashboard
@@ -573,8 +586,6 @@ def monitor(
     Use --attach (default) to launch a live orchestrator alongside
     the TUI. Use --detached to view an existing project's state.
     """
-    from .tui import AgentMonitorApp
-
     project_dir = project_dir.resolve()
 
     if not project_dir.exists():
@@ -597,35 +608,16 @@ def monitor(
                 max_iterations=max_iterations,
             )
 
-    tui = AgentMonitorApp(
-        orchestrator=orchestrator,
-        project_dir=project_dir,
-    )
-
     if orchestrator and attach:
-        # Run orchestrator loop alongside the TUI
-        async def run_with_orchestrator():
-            tui_task = asyncio.create_task(tui.run_async())
-            orch_task = asyncio.create_task(orchestrator.run_loop())
-
-            try:
-                # Wait for either to complete
-                done, pending = await asyncio.wait(
-                    [tui_task, orch_task],
-                    return_when=asyncio.FIRST_COMPLETED,
-                )
-                for task in pending:
-                    task.cancel()
-                    try:
-                        await task
-                    except asyncio.CancelledError:
-                        pass
-            except Exception:
-                pass
-
-        asyncio.run(run_with_orchestrator())
+        asyncio.run(_run_tui_with_orchestrator(orchestrator, project_dir))
     else:
         # View-only mode — just show project state
+        from .tui import AgentMonitorApp
+
+        tui = AgentMonitorApp(
+            orchestrator=None,
+            project_dir=project_dir,
+        )
         tui.run()
 
 

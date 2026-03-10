@@ -6,16 +6,20 @@ Custom Textual widgets for the agent monitoring TUI.
 All widgets read from the real OrchestratorBridge — no mocks.
 """
 
+import logging
 from datetime import datetime
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, Vertical, VerticalScroll
+from textual.css.query import NoMatches
 from textual.reactive import reactive
 from textual.widget import Widget
-from textual.widgets import DataTable, Label, ProgressBar, RichLog, Static, Sparkline
+from textual.widgets import RichLog, Static
 
 from ..core.streaming import EventType, StreamEvent
-from .bridge import AgentNode, OrchestratorBridge, OrchestratorSnapshot
+from .bridge import OrchestratorBridge, OrchestratorSnapshot
+
+logger = logging.getLogger(__name__)
 
 
 # ──────────────────────────────────────────────────────────
@@ -26,17 +30,30 @@ class CyberHeader(Widget):
     """Cyberpunk header showing system status."""
 
     status_text: reactive[str] = reactive("IDLE")
-    elapsed_text: reactive[str] = reactive("00:00:00")
-    session_text: reactive[str] = reactive("")
+
+    def __init__(self, **kwargs) -> None:
+        super().__init__(**kwargs)
+        self._session_start: datetime | None = None
 
     def compose(self) -> ComposeResult:
         with Horizontal(id="header"):
             yield Static("⟁ ACLI AGENT MONITOR", id="header-title")
             yield Static(self.status_text, id="header-status")
-            yield Static(self.elapsed_text, id="header-elapsed")
+            yield Static("", id="header-elapsed")
+
+    def _compute_elapsed(self) -> str:
+        if not self._session_start:
+            return "00:00:00"
+        delta = datetime.now() - self._session_start
+        total = int(delta.total_seconds())
+        h, rem = divmod(total, 3600)
+        m, s = divmod(rem, 60)
+        return f"{h:02d}:{m:02d}:{s:02d}"
 
     def update_from_snapshot(self, snap: OrchestratorSnapshot) -> None:
         if snap.running:
+            if not self._session_start:
+                self._session_start = datetime.now()
             self.status_text = "● RUNNING"
             self.query_one("#header-status", Static).update("● RUNNING")
             self.query_one("#header-status", Static).styles.color = "#00ff41"
@@ -45,16 +62,20 @@ class CyberHeader(Widget):
             self.query_one("#header-status", Static).update("◉ PAUSED")
             self.query_one("#header-status", Static).styles.color = "#f5a623"
         else:
+            self._session_start = None
             self.status_text = "○ IDLE"
             self.query_one("#header-status", Static).update("○ IDLE")
             self.query_one("#header-status", Static).styles.color = "#4a6670"
 
+        elapsed = self._compute_elapsed()
         if snap.current_session_id:
             session_info = (
                 f"S#{snap.current_session_id} [{snap.current_session_type}] "
-                f"│ {self.elapsed_text}"
+                f"│ {elapsed}"
             )
             self.query_one("#header-elapsed", Static).update(session_info)
+        else:
+            self.query_one("#header-elapsed", Static).update(elapsed)
 
 
 # ──────────────────────────────────────────────────────────
@@ -155,8 +176,10 @@ class AgentGraph(Widget):
         try:
             content = self.query_one("#graph-content", Static)
             content.update(self.render_graph())
-        except Exception:
+        except NoMatches:
             pass
+        except Exception:
+            logger.debug("Error refreshing agent graph", exc_info=True)
 
     @staticmethod
     def _status_icon(status: str) -> str:
@@ -286,7 +309,7 @@ class AgentDetail(Widget):
         try:
             body = self.query_one("#agent-detail-body", Static)
             body.update("\n".join(lines))
-        except Exception:
+        except NoMatches:
             pass
 
     @staticmethod
@@ -316,7 +339,6 @@ class LogStream(Widget):
         super().__init__(**kwargs)
         self.bridge = bridge
         self._log_level_filter: str = "all"
-        self._auto_scroll = True
 
     def compose(self) -> ComposeResult:
         with Vertical(id="log-panel"):
@@ -346,7 +368,7 @@ class LogStream(Widget):
 
         try:
             log = self.query_one("#log-stream", RichLog)
-        except Exception:
+        except NoMatches:
             return
 
         ts = event.timestamp.strftime("%H:%M:%S.%f")[:-3]
@@ -503,7 +525,7 @@ class StatsPanel(Widget):
         try:
             content = self.query_one("#stats-content", Static)
             content.update("\n".join(lines))
-        except Exception:
+        except NoMatches:
             pass
 
         # Tool board - last 8 tool events
@@ -563,5 +585,5 @@ class StatsPanel(Widget):
         try:
             board = self.query_one("#tool-board", Static)
             board.update(output)
-        except Exception:
+        except NoMatches:
             pass
