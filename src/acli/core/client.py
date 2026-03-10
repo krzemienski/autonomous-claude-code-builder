@@ -10,8 +10,8 @@ import os
 from pathlib import Path
 from typing import Any, Literal, cast
 
-from claude_code_sdk import ClaudeCodeOptions, ClaudeSDKClient
-from claude_code_sdk.types import HookMatcher
+from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
+from claude_agent_sdk.types import HookMatcher
 
 from ..security import bash_security_hook
 
@@ -135,13 +135,13 @@ def create_sdk_client(
     )
 
     return ClaudeSDKClient(
-        options=ClaudeCodeOptions(
+        options=ClaudeAgentOptions(
             model=model,
             system_prompt=system_prompt or default_system,
             allowed_tools=[*BUILTIN_TOOLS, *PUPPETEER_TOOLS, *PLAYWRIGHT_TOOLS],
             mcp_servers=mcp_servers,
             hooks=hooks,
-            max_turns=1000,
+            max_turns=100,
             cwd=str(project_dir),
             settings=str(settings_file),
         )

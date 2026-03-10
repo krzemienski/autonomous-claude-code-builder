@@ -31,7 +31,7 @@ This project adheres to a code of conduct:
 - Node.js 18 or higher (for MCP servers)
 - Git
 - Familiarity with async Python
-- Basic understanding of Claude Code SDK
+- Basic understanding of Claude Agent SDK
 
 ### Finding Issues
 
@@ -484,7 +484,7 @@ When contributing:
 - [Architecture](docs/ARCHITECTURE.md)
 - [API Reference](docs/API.md)
 - [Quick Start](docs/QUICKSTART.md)
-- [Claude Code SDK](https://github.com/anthropics/claude-code-sdk)
+- [Claude Agent SDK](https://github.com/anthropics/claude-code-sdk)
 
 ## Recognition
 

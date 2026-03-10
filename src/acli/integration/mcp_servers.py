@@ -148,7 +148,7 @@ class MCPServerManager:
             names: Server names to include (None = all enabled)
 
         Returns:
-            Dict suitable for ClaudeCodeOptions.mcp_servers
+            Dict suitable for ClaudeAgentOptions.mcp_servers
         """
         if not self._loaded:
             self.load()

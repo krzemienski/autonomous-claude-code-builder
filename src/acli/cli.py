@@ -7,6 +7,7 @@ Main CLI entry points using Typer.
 Commands:
     init     - Initialize new project with spec enhancement
     run      - Run autonomous coding loop
+    monitor  - Launch cyberpunk TUI for agent monitoring
     status   - Show project progress
     config   - Manage configuration
     enhance  - Enhance spec interactively
@@ -221,16 +222,66 @@ def run(
         border_style="green",
     ))
 
+    from .core.orchestrator import AgentOrchestrator
+
+    orchestrator = AgentOrchestrator(
+        project_dir=project_dir,
+        model=model,
+        max_iterations=max_iterations,
+    )
+
     if dashboard and not headless:
-        # Launch TUI dashboard (Phase 5)
-        console.print("[dim]Dashboard will be implemented in Phase 5[/]")
-        console.print("[dim]Running in headless mode for now...[/]\n")
+        # Launch full cyberpunk TUI
+        from .tui import AgentMonitorApp
 
-    # Run agent loop (Phase 4)
-    console.print("[dim]Agent orchestration will be implemented in Phase 4[/]")
+        tui = AgentMonitorApp(
+            orchestrator=orchestrator,
+            project_dir=project_dir,
+        )
 
-    # Placeholder for async run
-    # asyncio.run(run_autonomous_loop(project_dir, model, max_iterations))
+        async def run_with_tui():
+            tui_task = asyncio.create_task(tui.run_async())
+            orch_task = asyncio.create_task(orchestrator.run_loop())
+
+            try:
+                done, pending = await asyncio.wait(
+                    [tui_task, orch_task],
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                for task in pending:
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+            except Exception:
+                pass
+
+        asyncio.run(run_with_tui())
+    else:
+        # Headless mode — run orchestrator with console output
+        from .ui import Dashboard
+
+        async def run_headless():
+            dash = Dashboard(console=console, theme="dark")
+
+            async def event_listener():
+                async for event in orchestrator.buffer.iter_from(0):
+                    dash._handle_event(event)
+
+            orch_task = asyncio.create_task(orchestrator.run_loop())
+            listener_task = asyncio.create_task(event_listener())
+
+            try:
+                await orch_task
+            finally:
+                listener_task.cancel()
+                try:
+                    await listener_task
+                except asyncio.CancelledError:
+                    pass
+
+        asyncio.run(run_headless())
 
 
 @app.command()
@@ -487,6 +538,95 @@ def list_skills(
 
     console.print(table)
     console.print(f"\n[dim]Skills directory: {skills_dir}[/]")
+
+
+@app.command()
+def monitor(
+    project_dir: Annotated[
+        Path,
+        typer.Argument(help="Project directory to monitor"),
+    ] = Path("."),
+    model: Annotated[
+        str,
+        typer.Option("--model", "-m", help="Claude model to use"),
+    ] = "claude-sonnet-4-20250514",
+    max_iterations: Annotated[
+        Optional[int],
+        typer.Option("--max-iterations", help="Max sessions (None = unlimited)"),
+    ] = None,
+    attach: Annotated[
+        bool,
+        typer.Option("--attach/--detached", help="Attach to running orchestrator or view-only"),
+    ] = True,
+) -> None:
+    """
+    Launch the cyberpunk TUI for real-time agent monitoring.
+
+    Opens a full-screen terminal dashboard that connects directly
+    to the ACLI orchestrator. Shows:
+
+    - Agent hierarchy visualization
+    - Real-time log streaming with full verbosity
+    - Agent drill-down details
+    - Progress tracking and tool execution board
+
+    Use --attach (default) to launch a live orchestrator alongside
+    the TUI. Use --detached to view an existing project's state.
+    """
+    from .tui import AgentMonitorApp
+
+    project_dir = project_dir.resolve()
+
+    if not project_dir.exists():
+        console.print(f"[red]Error:[/] Directory '{project_dir}' not found")
+        raise typer.Exit(1)
+
+    orchestrator = None
+
+    if attach:
+        # Check for spec or feature list
+        spec_file = project_dir / "app_spec.txt"
+        feature_file = project_dir / "feature_list.json"
+
+        if spec_file.exists() or feature_file.exists():
+            from .core.orchestrator import AgentOrchestrator
+
+            orchestrator = AgentOrchestrator(
+                project_dir=project_dir,
+                model=model,
+                max_iterations=max_iterations,
+            )
+
+    tui = AgentMonitorApp(
+        orchestrator=orchestrator,
+        project_dir=project_dir,
+    )
+
+    if orchestrator and attach:
+        # Run orchestrator loop alongside the TUI
+        async def run_with_orchestrator():
+            tui_task = asyncio.create_task(tui.run_async())
+            orch_task = asyncio.create_task(orchestrator.run_loop())
+
+            try:
+                # Wait for either to complete
+                done, pending = await asyncio.wait(
+                    [tui_task, orch_task],
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                for task in pending:
+                    task.cancel()
+                    try:
+                        await task
+                    except asyncio.CancelledError:
+                        pass
+            except Exception:
+                pass
+
+        asyncio.run(run_with_orchestrator())
+    else:
+        # View-only mode — just show project state
+        tui.run()
 
 
 if __name__ == "__main__":

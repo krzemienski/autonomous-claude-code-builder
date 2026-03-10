@@ -1,0 +1,408 @@
+/* ═══════════════════════════════════════════════════════════
+   CYBERPUNK NEON — Agent Monitoring TUI Theme
+   ═══════════════════════════════════════════════════════════
+
+   Color Palette:
+     Background:    #000b1e (deep navy void)
+     Surface:       #001a33 (dark teal surface)
+     Panel:         #012f3f (panel background)
+     Primary:       #0abdc6 (neon cyan)
+     Secondary:     #ea00d9 (hot pink / magenta)
+     Accent:        #711c91 (deep purple)
+     Success:       #00ff41 (matrix green)
+     Warning:       #f5a623 (amber)
+     Error:         #ff003c (neon red)
+     Text:          #d7fffe (ice white)
+     Muted:         #4a6670 (steel gray)
+     Border:        #133e7c (electric blue border)
+   ═══════════════════════════════════════════════════════════ */
+
+Screen {
+    background: #000b1e;
+    color: #d7fffe;
+}
+
+/* ── Global Header ──────────────────────────────────────── */
+
+#header {
+    dock: top;
+    height: 3;
+    background: #0a0a2e;
+    color: #0abdc6;
+    text-style: bold;
+    border-bottom: heavy #133e7c;
+    padding: 0 2;
+    content-align: center middle;
+}
+
+#header-title {
+    color: #0abdc6;
+    text-style: bold;
+    width: auto;
+}
+
+#header-status {
+    color: #00ff41;
+    width: auto;
+    margin-left: 2;
+}
+
+#header-elapsed {
+    color: #ea00d9;
+    width: auto;
+    dock: right;
+    margin-right: 1;
+}
+
+/* ── Main Layout ────────────────────────────────────────── */
+
+#main-container {
+    height: 1fr;
+}
+
+#left-panel {
+    width: 35%;
+    min-width: 40;
+    border-right: heavy #133e7c;
+}
+
+#right-panel {
+    width: 65%;
+}
+
+/* ── Agent Graph Panel ──────────────────────────────────── */
+
+#agent-graph {
+    height: 50%;
+    border-bottom: heavy #133e7c;
+    padding: 0 1;
+}
+
+#agent-graph > Static {
+    color: #d7fffe;
+}
+
+.agent-node {
+    color: #0abdc6;
+}
+
+.agent-node-active {
+    color: #00ff41;
+    text-style: bold;
+}
+
+.agent-node-error {
+    color: #ff003c;
+    text-style: bold;
+}
+
+.agent-node-idle {
+    color: #4a6670;
+}
+
+.agent-connector {
+    color: #133e7c;
+}
+
+/* ── Agent Detail Panel ─────────────────────────────────── */
+
+#agent-detail {
+    height: 50%;
+    padding: 0 1;
+}
+
+#agent-detail-title {
+    color: #ea00d9;
+    text-style: bold;
+    height: 1;
+}
+
+#agent-detail-content {
+    margin-top: 1;
+    height: 1fr;
+    overflow-y: auto;
+}
+
+/* ── Log Panel ──────────────────────────────────────────── */
+
+#log-panel {
+    height: 60%;
+    border-bottom: heavy #133e7c;
+    padding: 0 1;
+}
+
+#log-header {
+    height: 2;
+    background: #001a33;
+    border-bottom: solid #133e7c;
+    padding: 0 1;
+}
+
+#log-filter-bar {
+    height: 1;
+    dock: top;
+    background: #001a33;
+    padding: 0 1;
+}
+
+#log-stream {
+    height: 1fr;
+    overflow-y: auto;
+    padding: 0 1;
+    scrollbar-color: #133e7c;
+    scrollbar-color-hover: #0abdc6;
+    scrollbar-color-active: #ea00d9;
+    scrollbar-background: #000b1e;
+    scrollbar-background-hover: #001a33;
+}
+
+.log-entry {
+    height: auto;
+}
+
+.log-timestamp {
+    color: #4a6670;
+    width: 10;
+}
+
+.log-level-debug {
+    color: #4a6670;
+}
+
+.log-level-info {
+    color: #0abdc6;
+}
+
+.log-level-warning {
+    color: #f5a623;
+}
+
+.log-level-error {
+    color: #ff003c;
+    text-style: bold;
+}
+
+.log-level-tool {
+    color: #ea00d9;
+}
+
+.log-source {
+    color: #711c91;
+}
+
+.log-message {
+    color: #d7fffe;
+}
+
+/* ── Progress / Stats Panel ─────────────────────────────── */
+
+#stats-panel {
+    height: 40%;
+    padding: 0 1;
+}
+
+#progress-bar-container {
+    height: 3;
+    margin: 1 0;
+}
+
+ProgressBar {
+    color: #0abdc6;
+}
+
+ProgressBar > .bar--bar {
+    color: #0abdc6;
+}
+
+ProgressBar > .bar--complete {
+    color: #00ff41;
+}
+
+/* ── Tool Execution Panel ───────────────────────────────── */
+
+#tool-board {
+    height: auto;
+    max-height: 12;
+    margin-top: 1;
+}
+
+.tool-entry {
+    height: 1;
+}
+
+.tool-status-running {
+    color: #0abdc6;
+    text-style: bold;
+}
+
+.tool-status-done {
+    color: #00ff41;
+}
+
+.tool-status-blocked {
+    color: #ff003c;
+    text-style: bold;
+}
+
+.tool-status-error {
+    color: #f5a623;
+}
+
+.tool-name {
+    color: #ea00d9;
+    width: 15;
+}
+
+.tool-duration {
+    color: #4a6670;
+    width: 10;
+}
+
+/* ── Data Table Styling ─────────────────────────────────── */
+
+DataTable {
+    background: #000b1e;
+    color: #d7fffe;
+    scrollbar-color: #133e7c;
+    scrollbar-color-hover: #0abdc6;
+    scrollbar-background: #000b1e;
+}
+
+DataTable > .datatable--header {
+    background: #001a33;
+    color: #0abdc6;
+    text-style: bold;
+}
+
+DataTable > .datatable--cursor {
+    background: #012f3f;
+    color: #d7fffe;
+}
+
+DataTable > .datatable--hover {
+    background: #001a33;
+}
+
+/* ── Scrollbar ──────────────────────────────────────────── */
+
+* {
+    scrollbar-size: 1 1;
+    scrollbar-color: #133e7c;
+    scrollbar-color-hover: #0abdc6;
+    scrollbar-color-active: #ea00d9;
+    scrollbar-background: #000b1e;
+    scrollbar-background-hover: #001a33;
+}
+
+/* ── Footer / Keybindings ───────────────────────────────── */
+
+Footer {
+    background: #0a0a2e;
+    color: #4a6670;
+    border-top: heavy #133e7c;
+}
+
+Footer > .footer--key {
+    color: #0abdc6;
+    background: #001a33;
+}
+
+Footer > .footer--description {
+    color: #d7fffe;
+}
+
+/* ── Borders and Panels ─────────────────────────────────── */
+
+.cyber-panel {
+    border: heavy #133e7c;
+    background: #000b1e;
+    padding: 0 1;
+}
+
+.cyber-panel-active {
+    border: heavy #0abdc6;
+    background: #001a33;
+}
+
+.cyber-panel:focus {
+    border: heavy #ea00d9;
+}
+
+/* ── Session Indicator ──────────────────────────────────── */
+
+.session-active {
+    background: #012f3f;
+    border: solid #00ff41;
+    padding: 0 1;
+    height: 1;
+}
+
+.session-idle {
+    background: #000b1e;
+    border: solid #4a6670;
+    padding: 0 1;
+    height: 1;
+}
+
+/* ── Sparkline / Metrics ────────────────────────────────── */
+
+Sparkline {
+    height: 3;
+    margin: 0 1;
+}
+
+Sparkline > .sparkline--min-color {
+    color: #133e7c;
+}
+
+Sparkline > .sparkline--max-color {
+    color: #0abdc6;
+}
+
+/* ── Labels ─────────────────────────────────────────────── */
+
+.label-primary {
+    color: #0abdc6;
+    text-style: bold;
+}
+
+.label-secondary {
+    color: #ea00d9;
+}
+
+.label-muted {
+    color: #4a6670;
+}
+
+.label-success {
+    color: #00ff41;
+}
+
+.label-error {
+    color: #ff003c;
+}
+
+.label-warning {
+    color: #f5a623;
+}
+
+/* ── Separator ──────────────────────────────────────────── */
+
+.cyber-separator {
+    height: 1;
+    color: #133e7c;
+}
+
+/* ── Hover / Focus Glows ────────────────────────────────── */
+
+.glow-cyan:hover {
+    border: heavy #0abdc6;
+}
+
+.glow-pink:hover {
+    border: heavy #ea00d9;
+}
+
+.glow-green:hover {
+    border: heavy #00ff41;
+}
