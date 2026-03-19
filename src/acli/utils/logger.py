@@ -7,7 +7,6 @@ Simple logging setup for acli.
 
 import logging
 import sys
-from pathlib import Path
 
 
 def get_logger(name: str = "acli") -> logging.Logger:

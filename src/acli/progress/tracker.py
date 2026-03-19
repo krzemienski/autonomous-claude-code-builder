@@ -6,12 +6,13 @@ High-level progress tracking with events and history.
 """
 
 import json
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from .feature_list import FeatureList, Feature, load_feature_list
+from .feature_list import Feature, FeatureList, load_feature_list
 
 
 @dataclass

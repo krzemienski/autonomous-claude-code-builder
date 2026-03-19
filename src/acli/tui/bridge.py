@@ -9,12 +9,13 @@ No mocks. No fakes. Reads live StreamBuffer events and orchestrator state.
 import asyncio
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from ..core.orchestrator import AgentOrchestrator
+from ..core.orchestrator_v1 import AgentOrchestrator
 from ..core.session import get_project_state
 from ..core.streaming import EventType, StreamBuffer, StreamEvent
 
@@ -70,6 +71,8 @@ class OrchestratorSnapshot:
     total_tool_calls: int = 0
     total_errors: int = 0
     events_processed: int = 0
+    context_summary: str = ""
+    gate_results: list[dict] = field(default_factory=list)
 
 
 class OrchestratorBridge:
@@ -250,6 +253,11 @@ class OrchestratorBridge:
             if self._current_agent:
                 self._current_agent.last_text = event.text[:500]
 
+        # Handle v2 event types via metadata dict
+        event_data = getattr(event, "metadata", None) or {}
+        event_type_str = getattr(event, "event_subtype", "") or event_data.get("event_type", "")
+        self._handle_v2_event(event_type_str, event_data)
+
         # Notify TUI callbacks
         for cb in self._callbacks:
             try:
@@ -258,6 +266,18 @@ class OrchestratorBridge:
                     asyncio.ensure_future(result)
             except Exception:
                 logger.debug("Event callback error for %s", event.type, exc_info=True)
+
+    def _handle_v2_event(self, event_type: str, data: dict) -> None:
+        """Handle v2 streaming events for bridge state updates."""
+        if event_type == "gate_result":
+            gate_entry = {
+                "name": data.get("name", ""),
+                "passed": data.get("passed", False),
+                "detail": data.get("detail", ""),
+            }
+            self._snapshot.gate_results.append(gate_entry)
+        elif event_type == "context_update":
+            self._snapshot.context_summary = data.get("summary", "")
 
     async def consume_events(self, stop_event: asyncio.Event | None = None) -> None:
         """

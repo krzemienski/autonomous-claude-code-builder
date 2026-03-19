@@ -17,7 +17,6 @@ from .validators import (
     ValidationResult,
     get_validator,
     validate_chmod,
-    validate_init_script,
     validate_pkill,
 )
 

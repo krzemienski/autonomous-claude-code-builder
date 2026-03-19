@@ -11,7 +11,6 @@ import shlex
 
 from .validators import get_validator
 
-
 # Allowed commands for development tasks
 # Minimal set needed for the autonomous coding demo
 ALLOWED_COMMANDS = {

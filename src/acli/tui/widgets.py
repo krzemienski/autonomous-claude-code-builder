@@ -587,3 +587,77 @@ class StatsPanel(Widget):
             board.update(output)
         except NoMatches:
             pass
+
+
+# ──────────────────────────────────────────────────────────
+# Context Explorer
+# ──────────────────────────────────────────────────────────
+
+class ContextExplorer(Widget):
+    """Displays project context from ContextStore and MemoryManager."""
+
+    DEFAULT_CSS = """
+    ContextExplorer {
+        height: auto;
+        min-height: 8;
+        border: solid $accent;
+    }
+    """
+
+    def compose(self) -> ComposeResult:
+        """Create child widgets."""
+        yield Static("[bold cyan]Context Explorer[/]", id="context-title")
+        yield Static("No context loaded", id="context-content")
+
+    def refresh_context(self) -> None:
+        """Refresh context display from store data."""
+        content_widget = self.query_one("#context-content", Static)
+        # Will be wired to ContextStore in bridge
+        content_widget.update("[dim]Context data will appear here[/]")
+
+
+# ──────────────────────────────────────────────────────────
+# Validation Gate Panel
+# ──────────────────────────────────────────────────────────
+
+class ValidationGatePanel(Widget):
+    """Displays validation gate status for all phases and tasks."""
+
+    DEFAULT_CSS = """
+    ValidationGatePanel {
+        height: auto;
+        min-height: 8;
+        border: solid $accent;
+    }
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self._gates: dict[str, str] = {}  # gate_id -> status
+
+    def compose(self) -> ComposeResult:
+        """Create child widgets."""
+        yield Static("[bold cyan]Validation Gates[/]", id="gates-title")
+        yield Static("No gates configured", id="gates-content")
+
+    def update_gate(self, gate_id: str, status: str) -> None:
+        """Update a single gate's status."""
+        self._gates[gate_id] = status
+        self.refresh_gates()
+
+    def refresh_gates(self) -> None:
+        """Refresh the gates display."""
+        if not self._gates:
+            return
+        content_widget = self.query_one("#gates-content", Static)
+        lines = []
+        status_colors = {
+            "PASS": "[#00ff41]PASS[/]",
+            "FAIL": "[#ff003c]FAIL[/]",
+            "RUNNING": "[#0abdc6]RUNNING[/]",
+            "PENDING": "[#4a6670]PENDING[/]",
+        }
+        for gate_id, status in self._gates.items():
+            colored = status_colors.get(status, status)
+            lines.append(f"  {gate_id}: {colored}")
+        content_widget.update("\n".join(lines))

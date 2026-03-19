@@ -8,7 +8,6 @@ Coordinates tool board, logs, and progress panels.
 
 import asyncio
 from datetime import datetime
-from typing import Any
 
 from rich.console import Console
 from rich.layout import Layout
@@ -16,11 +15,11 @@ from rich.live import Live
 from rich.panel import Panel
 from rich.text import Text
 
-from ..core.streaming import StreamBuffer, StreamEvent, EventType
-from .tool_board import ToolBoard
-from .logs import LogPanel, LogLevel
+from ..core.streaming import EventType, StreamBuffer, StreamEvent
+from .logs import LogLevel, LogPanel
 from .progress import ProgressPanel
-from .themes import Theme, get_theme
+from .themes import get_theme
+from .tool_board import ToolBoard
 
 
 class Dashboard:
@@ -78,7 +77,10 @@ class Dashboard:
     def _render_header(self) -> Panel:
         """Render header panel."""
         title = Text("AUTONOMOUS CLI", style="bold blue")
-        status = Text(" RUNNING ", style="bold white on green") if self._running else Text(" IDLE ", style="bold white on dim")
+        if self._running:
+            status = Text(" RUNNING ", style="bold white on green")
+        else:
+            status = Text(" IDLE ", style="bold white on dim")
 
         elapsed = "00:00:00"
         if self._start_time:
@@ -142,7 +144,8 @@ class Dashboard:
                 session_number=event.session_id,
                 session_type=event.session_type,
             )
-            self.logs.add(f"Session {event.session_id} started ({event.session_type})", level=LogLevel.INFO)
+            msg = f"Session {event.session_id} started ({event.session_type})"
+            self.logs.add(msg, level=LogLevel.INFO)
 
         elif event.type == EventType.SESSION_END:
             self.logs.add(f"Session {event.session_id} ended", level=LogLevel.INFO)
@@ -186,7 +189,7 @@ class Dashboard:
             console=self.console,
             refresh_per_second=self.refresh_rate,
             transient=False,
-        ) as live:
+        ):
             self._update_layout(layout)
 
             # Run both loops concurrently

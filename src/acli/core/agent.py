@@ -6,14 +6,11 @@ Core agent interaction using Claude Agent SDK.
 Handles message streaming and tool execution tracking.
 """
 
-import asyncio
 from pathlib import Path
-from typing import Any
 
 from claude_agent_sdk import ClaudeSDKClient
 
 from ..utils import logger
-from .client import create_sdk_client
 from .streaming import StreamingHandler
 
 

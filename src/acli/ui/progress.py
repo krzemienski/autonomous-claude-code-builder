@@ -13,7 +13,7 @@ from rich.progress_bar import ProgressBar
 from rich.table import Table
 from rich.text import Text
 
-from .themes import Theme, DEFAULT_THEME
+from .themes import DEFAULT_THEME, Theme
 
 
 @dataclass
@@ -82,7 +82,11 @@ class ProgressPanel:
         table.add_column("Value", style="bold")
 
         percentage = self.state.percentage
-        table.add_row("Progress", f"{self.state.features_done}/{self.state.features_total} ({percentage:.1f}%)")
+        progress_str = (
+            f"{self.state.features_done}/"
+            f"{self.state.features_total} ({percentage:.1f}%)"
+        )
+        table.add_row("Progress", progress_str)
         table.add_row("Session", f"#{self.state.session_number} ({self.state.session_type})")
         table.add_row("Elapsed", self.state.elapsed_time)
 
@@ -100,7 +104,11 @@ class ProgressPanel:
             table,
             title="[bold]Progress[/]",
             subtitle=f"{bar}",
-            border_style=self.theme.border_active if self.state.session_type else self.theme.border_inactive,
+            border_style=(
+                self.theme.border_active
+                if self.state.session_type
+                else self.theme.border_inactive
+            ),
             padding=(0, 1),
         )
 

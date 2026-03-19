@@ -1,245 +1,228 @@
-# Architecture
+# Architecture — ACLI v2 (Shannon-ACLI)
 
-This document describes the system architecture of the Autonomous CLI.
+This document describes the system architecture of the Autonomous CLI v2.
 
 ## Overview
 
-The Autonomous CLI is a multi-agent autonomous coding system that converts plain English specifications into working applications through iterative development and browser-based testing. It includes a cyberpunk-themed Textual TUI for real-time agent monitoring, visualization, and drill-down analysis.
+ACLI v2 is a universal autonomous coding system that accepts ANY prompt and ANY project type. It extends v1's two-agent pattern with multi-agent orchestration, functional validation gates, deep context/memory management, and enhanced TUI visibility.
 
-## System Diagram
+## System Diagram (v2)
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                           Autonomous CLI (acli)                              │
-├──────────────────────────────────────────────────────────────────────────────┤
-│                                                                              │
-│  ┌─────────────┐     ┌──────────────┐     ┌──────────────────────────────┐  │
-│  │   CLI       │────→│ Orchestrator │────→│ Agent Monitor TUI (Textual)  │  │
-│  │  Commands   │     │              │     │ ┌──────────┬───────────────┐ │  │
-│  │ (Typer)     │     │  StreamBuffer│────→│ │ Agent    │ Log Stream    │ │  │
-│  └─────────────┘     │  + Events    │     │ │ Graph    │ (full verbose)│ │  │
-│    │                  └──────────────┘     │ ├──────────┼───────────────┤ │  │
-│    │                         │             │ │ Agent    │ Stats +       │ │  │
-│    │                         ↓             │ │ Detail   │ Tool Board    │ │  │
-│    │                 ┌───────────────┐     │ └──────────┴───────────────┘ │  │
-│    │                 │  Agent Session│     └──────────────────────────────┘  │
-│    │                 │  (Initializer │                                       │
-│    │                 │   or Coding)  │     ┌──────────────────────────────┐  │
-│    │                 └───────────────┘     │ Legacy Dashboard (Rich.Live) │  │
-│    │                         │             │ (headless/fallback mode)     │  │
-│    │           ┌─────────────┼──────────┐  └──────────────────────────────┘  │
-│    │           ↓             ↓          ↓                                    │
-│    │   ┌───────────┐ ┌────────────┐ ┌──────────┐                           │
-│    │   │ Security  │ │  Progress  │ │ Browser  │                           │
-│    │   │  Hooks    │ │  Tracker   │ │ Manager  │                           │
-│    │   └───────────┘ └────────────┘ └──────────┘                           │
-│    │           │             │            │                                  │
-│    │           ↓             ↓            ↓                                  │
-│    │   ┌───────────┐ ┌────────────┐ ┌──────────┐                           │
-│    │   │Validators │ │feature_list│ │Puppeteer/│                           │
-│    │   │(pkill,    │ │   .json    │ │Playwright│                           │
-│    │   │ chmod)    │ └────────────┘ └──────────┘                           │
-│    │   └───────────┘                                                        │
-│    │                                                                         │
-│    └──→ OrchestratorBridge (TUI ↔ Real Orchestrator)                        │
-│         ├─ AgentNode hierarchy (live agent tree)                             │
-│         ├─ OrchestratorSnapshot (point-in-time state)                        │
-│         ├─ Event callbacks (real StreamBuffer → TUI widgets)                 │
-│         └─ Control commands (pause/resume/stop → real orchestrator)          │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          Autonomous CLI v2 (acli)                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌──────────────┐     ┌───────────────┐     ┌───────────────────────────┐  │
+│  │ CLI          │────→│ PromptRouter  │────→│ EnhancedOrchestrator (v2) │  │
+│  │ (13 commands)│     │ (8 workflows) │     │                           │  │
+│  │ cli.py +     │     └───────────────┘     │  ┌─────────────────────┐  │  │
+│  │ cli_v2.py    │              │            │  │ AgentFactory        │  │  │
+│  └──────────────┘              ↓            │  │ (context + memory   │  │  │
+│                        ┌───────────────┐    │  │  + skill injection) │  │  │
+│                        │ WorkflowConfig│    │  └─────────────────────┘  │  │
+│                        │ ├─ type       │    │           │               │  │
+│                        │ ├─ agents[]   │    │           ↓               │  │
+│                        │ ├─ model_tier │    │  ┌─────────────────────┐  │  │
+│                        │ └─ platform   │    │  │ Agent Pipeline      │  │  │
+│                        └───────────────┘    │  │ Router → Analyst    │  │  │
+│                                             │  │ → Planner           │  │  │
+│                                             │  │ → [Impl → Valid]×N  │  │  │
+│                                             │  │ → Reporter          │  │  │
+│                                             │  └─────────────────────┘  │  │
+│                                             └───────────────────────────┘  │
+│                                                        │                   │
+│    ┌───────────────┐    ┌─────────────┐    ┌──────────┴──────────┐       │
+│    │ ContextStore  │    │ MemoryMgr   │    │ ValidationEngine    │       │
+│    │ .acli/context/│    │ .acli/memory│    │ EvidenceCollector   │       │
+│    │ ├─ analysis   │    │ ├─ facts[]  │    │ GateRunner          │       │
+│    │ ├─ tech_stack │    │ └─ inject   │    │ MockDetector        │       │
+│    │ ├─ conventions│    │   prompt    │    │ Platform validators │       │
+│    │ └─ decisions  │    └─────────────┘    └─────────────────────┘       │
+│    └───────────────┘                                                      │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │ Agent Monitor TUI (Textual) — 7-panel cyberpunk dashboard           │  │
+│  │ ┌────────────┬────────────┬──────────────────────────────────────┐  │  │
+│  │ │ AgentGraph │ AgentDetail│ LogStream (F1:All F2:Tools F3:Err)   │  │  │
+│  │ ├────────────┤            ├──────────────────────────────────────┤  │  │
+│  │ │ Context    │            │ ValidationGatePanel                  │  │  │
+│  │ │ Explorer   │            │ VG-1.1 PASS │ VG-1.2 PASS │ ...    │  │  │
+│  │ ├────────────┴────────────┼──────────────────────────────────────┤  │  │
+│  │ │                         │ StatsPanel (progress, tools, errors) │  │  │
+│  │ ├─────────────────────────┴──────────────────────────────────────┤  │  │
+│  │ │ > PromptInput (inline task entry)                              │  │  │
+│  │ └───────────────────────────────────────────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │
+│  │ Security     │  │ SkillEngine  │  │ SessionLogger│  │ Browser      │  │
+│  │ 16-cmd allow │  │ Agent/plat/  │  │ JSONL to     │  │ Puppeteer +  │  │
+│  │ + MockDetect │  │ keyword map  │  │ .acli/sess/  │  │ Playwright   │  │
+│  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘  │
+│                                                                             │
+│  v1 compat: AgentOrchestrator (orchestrator_v1.py) still available         │
+└─────────────────────────────────────────────────────────────────────────────┘
                               │
                               ↓
                     ┌──────────────────┐
                     │ Claude Agent SDK │
-                    │ (Anthropic API)  │
+                    │ claude-opus-4-6  │
+                    │ claude-sonnet-4-6│
                     └──────────────────┘
+```
+
+## Agent Orchestration Sequence
+
+```
+User Prompt
+    │
+    ↓
+PromptRouter.classify()
+    │ ── detects: platform, source files, intent keywords
+    ↓
+WorkflowConfig
+    │ ── workflow_type, agent_sequence, model_tier, platform
+    ↓
+EnhancedOrchestrator.run()
+    │
+    ├─→ ANALYST (Opus) ── codebase analysis, tech stack detection
+    │       ↓
+    ├─→ PLANNER (Opus) ── create execution plan with tasks
+    │       ↓
+    ├─→ IMPLEMENTER (Sonnet) ── implement one task
+    │       ↓
+    ├─→ VALIDATOR (Sonnet) ── functional validation with evidence
+    │       │
+    │       ├─ PASS → next task
+    │       └─ FAIL → retry (max 3) → escalate to Opus
+    │       ↓
+    └─→ REPORTER (Sonnet) ── generate phase summary
 ```
 
 ## Core Components
 
-### 1. CLI Layer (`acli.cli`)
+### 1. CLI Layer (`acli.cli` + `acli.cli_v2`)
 
-**Purpose**: User-facing command interface
+**v1 commands** (cli.py): `init`, `run`, `monitor`, `status`, `enhance`, `config`, `list-skills`
+**v2 commands** (cli_v2.py): `onboard`, `prompt`, `validate`, `session`, `memory`, `context`
 
-**Commands**:
-- `init` - Initialize new project
-- `run` - Run autonomous coding loop (with optional TUI dashboard)
-- `monitor` - Launch cyberpunk TUI for real-time agent monitoring
-- `status` - Show progress
-- `enhance` - Spec enhancement
-- `config` - Configuration management
-- `list-skills` - Discover available skills
+### 2. Prompt Router (`acli.routing`)
 
-**Implementation**: Typer-based CLI with subcommands
+Classifies any prompt into 8 workflow types:
 
-### 2. Orchestrator (`acli.core.orchestrator`)
+| Type | Trigger | Agent Sequence |
+|------|---------|---------------|
+| GREENFIELD_APP | app_spec.txt, <4 source files | analyst → planner → implementer → validator |
+| BROWNFIELD_ONBOARD | source files, no .acli/context | analyst → planner |
+| BROWNFIELD_TASK | source files + task prompt | planner → implementer → validator |
+| DEBUG | "fix"/"debug"/"broken" keywords | analyst → implementer → validator |
+| REFACTOR | "refactor"/"migrate" keywords | analyst → planner → implementer → validator |
+| CLI_TOOL | Cargo.toml present | analyst → planner → implementer → validator |
+| IOS_APP | .xcodeproj/.xcworkspace | analyst → planner → implementer → validator |
+| FREE_TASK | fallback | implementer → validator |
 
-**Purpose**: Coordinate agent sessions and manage workflow
+### 3. Enhanced Orchestrator (`acli.core.orchestrator_v2`)
 
-**Responsibilities**:
-- Detect first run vs continuation
-- Select appropriate agent (initializer vs coding)
-- Manage session lifecycle
-- Coordinate with progress tracker
-- Feed events to StreamBuffer for TUI consumption
-- Handle pause/resume/stop controls
+Replaces v1's 2-agent pattern with dynamic multi-agent pipeline.
 
-**Key Class**:
-```python
-class AgentOrchestrator:
-    async def run_loop() -> None
-    async def run_single_session() -> tuple[str, str]
-    def request_pause() -> None
-    def request_stop() -> None
-    def resume() -> None
-    def get_status() -> dict[str, Any]
-```
+**Key methods**: `run(prompt)`, `run_loop()` (v1 compat), `route_prompt()`, `run_analyst()`, `run_planner()`, `run_implementer()`, `run_validator()`, `run_reporter()`
 
-### 3. Agent Session (`acli.core.agent`)
+**Controls**: `request_pause()`, `request_stop()`, `resume()`, `get_status()`
 
-**Purpose**: Execute single agent session with Claude
+> Agent method bodies are scaffolded but not yet wired to real SDK `query()` calls.
 
-**Session Types**:
+### 4. Agent Architecture (`acli.agents`)
 
-1. **Initializer Session**: Reads `app_spec.txt`, generates `feature_list.json` (~200 features), creates project structure
-2. **Coding Session**: Picks ONE incomplete feature, implements, tests, marks passing, commits
+7 agent types with model routing:
 
-### 4. Agent Monitor TUI (`acli.tui`)
+| Agent | Model | Max Turns | Purpose |
+|-------|-------|-----------|---------|
+| ROUTER | Sonnet | 10 | Classify prompt |
+| ANALYST | Opus | 50 | Codebase analysis |
+| PLANNER | Opus | 50 | Create execution plan |
+| IMPLEMENTER | Sonnet | 200 | Write code |
+| VALIDATOR | Sonnet | 30 | Functional validation |
+| CONTEXT_MANAGER | Sonnet | 20 | Manage knowledge |
+| REPORTER | Sonnet | 10 | Generate reports |
 
-**Purpose**: Full-screen cyberpunk-themed terminal dashboard for real-time agent monitoring
+`AgentFactory` injects ContextStore data + MemoryManager facts + SkillEngine skills into each agent's system prompt.
 
-**Technology**: Textual >=1.0 (Python TUI framework, async-native, CSS-styled)
+### 5. Context & Memory (`acli.context`)
 
-**Components**:
+| Component | Storage | Purpose |
+|-----------|---------|---------|
+| ContextStore | `.acli/context/*.json` | Codebase analysis, tech stack, conventions, decisions |
+| MemoryManager | `.acli/memory/project_memory.json` | Cross-session categorized facts |
+| KnowledgeChunker | In-memory | Split source files into retrievable segments |
+| BrownfieldOnboarder | Populates ContextStore | Async pipeline: discover → detect → map → store |
 
-| Component | File | Purpose |
-|-----------|------|---------|
-| `AgentMonitorApp` | `app.py` | Main Textual app with keybindings |
-| `OrchestratorBridge` | `bridge.py` | Direct connection to real orchestrator |
-| `AgentGraph` | `widgets.py` | ASCII agent hierarchy visualization |
-| `AgentDetail` | `widgets.py` | Deep drill-down into selected agent |
-| `LogStream` | `widgets.py` | Full-verbosity event log streaming |
-| `StatsPanel` | `widgets.py` | Progress, metrics, tool board |
-| `CyberHeader` | `widgets.py` | System status bar |
-| Cyberpunk Theme | `cyberpunk.tcss` | 408-line CSS theme |
+### 6. Validation Engine (`acli.validation`)
 
-**Layout**:
-```
-┌──────────────────────────────────────────────────────────────┐
-│  ⟁ ACLI AGENT MONITOR │ ● RUNNING │ S#2 [coding] │ 05:30  │
-├────────────────────┬─────────────────────────────────────────┤
-│  AGENT HIERARCHY   │ LOGS │ F1:All F2:Tools F3:Errors F4:Text│
-│  ◆ ORCHESTRATOR    │ 14:32:15 TXT Creating structure...      │
-│  ├─ ✓ S#1 [init]  │ 14:32:16 TOL ▶ Bash npm init -y         │
-│  ╰─ ◆ S#2 [code]  │ 14:32:17 TOL ✓ Bash 150ms OK            │
-│    ⚡ Write        │ 14:32:18 TOL ▶ Write src/App.jsx         │
-│────────────────────├─────────────────────────────────────────┤
-│  ◆ CODING          │ PROGRESS ████████░░░░░░ 10/200 5.0%    │
-│  Status: running   │ Sessions: 2 │ Tools: 15 │ Errors: 0    │
-│  Tools: 15         │ RECENT TOOLS                             │
-│  Duration: 5m30s   │   ✓ Write 88ms │ ✓ Bash 150ms          │
-├────────────────────┴─────────────────────────────────────────┤
-│ q Quit  p Pause/Resume  s Stop  ↑↓ Navigate  Enter Detail   │
-└──────────────────────────────────────────────────────────────┘
-```
+Enforces the **Iron Rule**: no mocks, no test files, real system validation only.
 
-**Keyboard Navigation**:
-| Key | Action |
-|-----|--------|
-| `q` | Quit |
-| `p` | Pause/Resume orchestrator |
-| `s` | Stop orchestrator |
-| `j`/`k` or `↑`/`↓` | Navigate agents |
-| `Enter` | Drill into selected agent |
-| `F1`-`F4` | Switch log filter (All/Tools/Errors/Text) |
-| `Tab` | Cycle focus |
+| Component | Purpose |
+|-----------|---------|
+| MockDetector | Pre-tool-use hook blocking mock/test code (20+ patterns) |
+| EvidenceCollector | Saves text/JSON/command output as evidence files |
+| GateRunner | Executes validation gates with real shell commands |
+| ValidationEngine | Orchestrates per-task and per-phase gates |
+| Platform Validators | API (curl), CLI (binary exec), Web (Playwright), iOS (simctl), Generic |
 
-**Cyberpunk Color Palette**:
-| Color | Hex | Usage |
-|-------|-----|-------|
-| Deep Navy | `#000b1e` | Background |
-| Neon Cyan | `#0abdc6` | Primary, borders |
-| Hot Pink | `#ea00d9` | Tool names, highlights |
-| Matrix Green | `#00ff41` | Success, running |
-| Neon Red | `#ff003c` | Errors, blocked |
-| Amber | `#f5a623` | Warnings, paused |
-| Ice White | `#d7fffe` | Primary text |
-| Steel Gray | `#4a6670` | Muted, timestamps |
-| Electric Blue | `#133e7c` | Borders, connectors |
+### 7. Streaming (`acli.core.streaming`)
 
-### 5. Legacy Dashboard (`acli.ui`)
+21 event types: 8 v1 (TEXT, TOOL_START, TOOL_END, TOOL_BLOCKED, ERROR, SESSION_START, SESSION_END, PROGRESS) + 13 v2 (AGENT_SPAWN, AGENT_COMPLETE, ANALYSIS_UPDATE, PLAN_CREATED, PHASE_START, PHASE_END, GATE_START, GATE_RESULT, CONTEXT_UPDATE, MEMORY_UPDATE, THINKING, MOCK_DETECTED, PROMPT_RECEIVED).
 
-**Purpose**: Lightweight Rich.Live-based dashboard (headless/fallback mode)
+### 8. TUI (`acli.tui`)
 
-Used when `--no-dashboard` or `--headless` flags are set.
+7-panel cyberpunk dashboard:
 
-### 6. Security Layer (`acli.security`)
+| Panel | Purpose | Keys |
+|-------|---------|------|
+| AgentGraph | Agent hierarchy | j/k navigate |
+| AgentDetail | Deep drill-down | Enter |
+| ContextExplorer | Tech stack, memory facts | c toggle |
+| LogStream | Full-verbosity event log | F1-F4 filter |
+| ValidationGatePanel | Gate PASS/FAIL status | v toggle |
+| StatsPanel | Progress, tools, errors | — |
+| PromptInput | Inline task entry | / focus |
 
-**Purpose**: Prevent dangerous operations via defense-in-depth
+### 9. Skill Engine (`acli.integration.skill_engine`)
 
-**Layers**:
-1. OS-level sandbox
-2. Filesystem restriction (project directory only)
-3. 16-command allowlist
-4. Per-command validators (pkill, chmod, init.sh)
-5. Shlex parsing to prevent injection
+Auto-detects relevant skills for each agent based on: agent type mapping, platform mapping, task context keyword matching. Scans `~/.claude/skills/` for available SKILL.md files.
 
-### 7. Streaming Infrastructure (`acli.core.streaming`)
+### 10. Session Logger (`acli.core.session.SessionLogger`)
 
-**Purpose**: Event-driven communication between orchestrator and all UI layers
+JSONL logging to `.acli/sessions/`. Each line: `{type, session_id, timestamp, ...data}`. Supports `list_sessions()` and `load_session()` for replay.
 
-**Data Flow**:
-```
-Claude Agent SDK → StreamingHandler → StreamBuffer → OrchestratorBridge → TUI Widgets
-                                                  ↘ Legacy Dashboard (Rich.Live)
-```
+## Security
 
-**Event Types**: TEXT, TOOL_START, TOOL_END, TOOL_BLOCKED, ERROR, SESSION_START, SESSION_END, PROGRESS
+- 16-command allowlist with per-command validators
+- Mock detection hook on Write/Edit tools (20+ regex patterns)
+- Defense layers: OS sandbox → file permissions → command allowlist → shlex parsing → pre-tool-use hooks → mock detection
 
 ## File Structure
 
 ```
-src/acli/
-├── cli.py                     # Typer CLI (7 commands)
-├── core/                      # Agent orchestration engine
-│   ├── orchestrator.py        # Multi-agent coordinator
-│   ├── agent.py               # Agent session logic (Claude Agent SDK)
-│   ├── client.py              # SDK client configuration
-│   ├── session.py             # Session state management
-│   └── streaming.py           # Event streaming + buffering
-├── tui/                       # Cyberpunk Agent Monitor TUI
-│   ├── app.py                 # Main Textual application
-│   ├── bridge.py              # OrchestratorBridge (real data only)
-│   ├── widgets.py             # All TUI widgets
-│   └── cyberpunk.tcss         # Cyberpunk Neon CSS theme
-├── ui/                        # Legacy Rich-based dashboard
-├── security/                  # Defense-in-depth security
-├── spec/                      # Spec enhancement
-├── progress/                  # Progress tracking
-├── browser/                   # Browser automation (Puppeteer/Playwright)
-├── integration/               # External integrations
-├── prompts/                   # Prompt templates
-└── utils/                     # Logger, event emitter
+src/acli/                          # ~9,400 LOC across 70 files
+├── cli.py + cli_v2.py             # 13 CLI commands
+├── core/
+│   ├── orchestrator_v1.py         # v1 two-agent pattern (preserved)
+│   ├── orchestrator_v2.py         # v2 enhanced orchestrator
+│   ├── client.py                  # SDK client (MODEL_OPUS/MODEL_SONNET)
+│   ├── session.py                 # ProjectState + SessionLogger
+│   └── streaming.py               # 21 event types
+├── routing/                       # Prompt classification (v2)
+├── context/                       # Context/memory management (v2)
+├── agents/                        # 7-type agent definitions (v2)
+├── validation/                    # Functional validation engine (v2)
+│   └── platforms/                 # 5 platform validators
+├── tui/                           # 7-panel cyberpunk TUI
+├── integration/                   # SkillEngine + external integrations
+├── security/                      # 16-command allowlist + mock detection
+├── spec/                          # Spec enhancement
+├── progress/                      # Feature tracking
+├── browser/                       # Puppeteer + Playwright
+├── prompts/                       # Agent prompt templates
+└── utils/                         # Logger, event emitter
 ```
-
-## Extension Points
-
-### Adding New TUI Widgets
-
-1. Create widget class in `tui/widgets.py`
-2. Add to `app.py` compose method
-3. Wire up to `OrchestratorBridge` data
-4. Style in `cyberpunk.tcss`
-
-### Adding New Agent Types
-
-1. Create prompt template in `prompts/templates/`
-2. Add session type to orchestrator
-3. Bridge automatically picks up new sessions via StreamBuffer events
-
-### Adding New Commands to Security Allowlist
-
-1. Add command to `ALLOWED_COMMANDS` in `hooks.py`
-2. Create validator if needed in `validators.py`
-3. Register in `VALIDATORS` dict

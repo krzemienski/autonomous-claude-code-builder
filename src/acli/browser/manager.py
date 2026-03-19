@@ -7,22 +7,22 @@ regardless of backend (Puppeteer or Playwright).
 """
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
-from .puppeteer import (
-    PuppeteerConfig,
-    PuppeteerHelper,
-    get_puppeteer_tool_list,
-)
 from .playwright import (
     PlaywrightConfig,
     PlaywrightHelper,
     get_playwright_tool_list,
 )
+from .puppeteer import (
+    PuppeteerConfig,
+    PuppeteerHelper,
+    get_puppeteer_tool_list,
+)
 
 
-class BrowserBackend(str, Enum):
+class BrowserBackend(StrEnum):
     """Available browser automation backends."""
     PUPPETEER = "puppeteer"
     PLAYWRIGHT = "playwright"
@@ -130,7 +130,10 @@ class UnifiedBrowser:
             elif seconds:
                 return PlaywrightHelper.wait_for_time(seconds)
         # Puppeteer doesn't have native wait - use evaluate
-        return PuppeteerHelper.evaluate(f"await new Promise(r => setTimeout(r, {int((seconds or 1) * 1000)}))")
+        delay_ms = int((seconds or 1) * 1000)
+        return PuppeteerHelper.evaluate(
+            f"await new Promise(r => setTimeout(r, {delay_ms}))"
+        )
 
     def get_page_info(self) -> dict[str, Any]:
         """Get page info command."""
@@ -172,7 +175,7 @@ Use these tools for browser automation:
 
 1. **Navigate**: `mcp__playwright__browser_navigate` with `url`
 2. **Snapshot**: `mcp__playwright__browser_snapshot` to get accessibility tree
-3. **Click**: `mcp__playwright__browser_click` with `element` (description) and `ref` (from snapshot)
+3. **Click**: `mcp__playwright__browser_click` with `element` and `ref`
 4. **Type**: `mcp__playwright__browser_type` with `element`, `ref`, and `text`
 5. **Wait**: `mcp__playwright__browser_wait_for` with `text` or `time`
 6. **Screenshot**: `mcp__playwright__browser_take_screenshot`

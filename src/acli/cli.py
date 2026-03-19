@@ -5,18 +5,24 @@ Autonomous CLI Application
 Main CLI entry points using Typer.
 
 Commands:
-    init     - Initialize new project with spec enhancement
-    run      - Run autonomous coding loop
-    monitor  - Launch cyberpunk TUI for agent monitoring
-    status   - Show project progress
-    config   - Manage configuration
-    enhance  - Enhance spec interactively
+    init       - Initialize new project with spec enhancement
+    run        - Run autonomous coding loop
+    monitor    - Launch cyberpunk TUI for agent monitoring
+    status     - Show project progress
+    config     - Manage configuration
+    enhance    - Enhance spec interactively
+    onboard    - Onboard existing codebase (v2)
+    prompt     - Execute single task prompt (v2)
+    validate   - Run validation gates (v2)
+    session    - Manage agent sessions (v2)
+    memory     - Manage project memory (v2)
+    context    - Show project context store (v2)
 """
 
 import asyncio
 import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -36,9 +42,14 @@ app = typer.Typer(
 
 console = Console()
 
+# Register v2 commands (onboard, prompt, validate, session, memory, context)
+from .cli_v2 import register_v2_commands  # noqa: E402
+
+register_v2_commands(app)
+
 
 async def _run_tui_with_orchestrator(
-    orchestrator: "AgentOrchestrator",
+    orchestrator: object,
     project_dir: Path,
 ) -> None:
     """Run the TUI and orchestrator concurrently, cancelling the other when one completes."""
@@ -84,7 +95,7 @@ def version_callback(value: bool) -> None:
 @app.callback()
 def main(
     version: Annotated[
-        Optional[bool],
+        bool | None,
         typer.Option(
             "--version", "-v",
             callback=version_callback,
@@ -108,7 +119,7 @@ def init(
         typer.Option("--template", "-t", help="Project template to use"),
     ] = "default",
     spec: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option("--spec", "-s", help="Path to existing spec file"),
     ] = None,
     interactive: Annotated[
@@ -208,9 +219,9 @@ def run(
     model: Annotated[
         str,
         typer.Option("--model", "-m", help="Claude model to use"),
-    ] = "claude-sonnet-4-20250514",
+    ] = "claude-sonnet-4-6",
     max_iterations: Annotated[
-        Optional[int],
+        int | None,
         typer.Option("--max-iterations", help="Max sessions (None = unlimited)"),
     ] = None,
     dashboard: Annotated[
@@ -260,7 +271,7 @@ def run(
         border_style="green",
     ))
 
-    from .core.orchestrator import AgentOrchestrator
+    from .core.orchestrator_v1 import AgentOrchestrator
 
     orchestrator = AgentOrchestrator(
         project_dir=project_dir,
@@ -341,7 +352,7 @@ def status(
                 features = data["features"]
             else:
                 features = []
-    except (json.JSONDecodeError, IOError) as e:
+    except (OSError, json.JSONDecodeError) as e:
         console.print(f"[red]Error reading feature_list.json:[/] {e}")
         raise typer.Exit(1)
 
@@ -378,11 +389,11 @@ def status(
 @app.command()
 def enhance(
     spec_file: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Argument(help="Path to spec file (or read from stdin)"),
     ] = None,
     output: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option("--output", "-o", help="Output path for enhanced spec"),
     ] = None,
     format: Annotated[
@@ -429,11 +440,11 @@ def enhance(
 @app.command()
 def config(
     key: Annotated[
-        Optional[str],
+        str | None,
         typer.Argument(help="Config key to get/set"),
     ] = None,
     value: Annotated[
-        Optional[str],
+        str | None,
         typer.Argument(help="Value to set"),
     ] = None,
     list_all: Annotated[
@@ -451,7 +462,7 @@ def config(
 
     # Default config
     default_config = {
-        "model": "claude-sonnet-4-20250514",
+        "model": "claude-sonnet-4-6",
         "max_iterations": None,
         "dashboard": True,
         "auto_commit": True,
@@ -562,9 +573,9 @@ def monitor(
     model: Annotated[
         str,
         typer.Option("--model", "-m", help="Claude model to use"),
-    ] = "claude-sonnet-4-20250514",
+    ] = "claude-sonnet-4-6",
     max_iterations: Annotated[
-        Optional[int],
+        int | None,
         typer.Option("--max-iterations", help="Max sessions (None = unlimited)"),
     ] = None,
     attach: Annotated[
@@ -600,7 +611,7 @@ def monitor(
         feature_file = project_dir / "feature_list.json"
 
         if spec_file.exists() or feature_file.exists():
-            from .core.orchestrator import AgentOrchestrator
+            from .core.orchestrator_v1 import AgentOrchestrator
 
             orchestrator = AgentOrchestrator(
                 project_dir=project_dir,

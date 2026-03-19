@@ -16,12 +16,21 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.css.query import NoMatches
-from textual.widgets import Footer, Static
+from textual.widgets import Footer
 
-from ..core.orchestrator import AgentOrchestrator
+from ..core.orchestrator_v1 import AgentOrchestrator
 from ..core.streaming import StreamEvent
 from .bridge import OrchestratorBridge
-from .widgets import AgentDetail, AgentGraph, CyberHeader, LogStream, StatsPanel
+from .prompt_input import PromptInput
+from .widgets import (
+    AgentDetail,
+    AgentGraph,
+    ContextExplorer,
+    CyberHeader,
+    LogStream,
+    StatsPanel,
+    ValidationGatePanel,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +70,9 @@ class AgentMonitorApp(App):
         Binding("f3", "filter_errors", "Error Logs"),
         Binding("f4", "filter_text", "Text Logs"),
         Binding("r", "refresh_all", "Refresh", show=False),
+        Binding("slash", "focus_prompt", "Prompt", show=True),
+        Binding("v", "toggle_validation", "Validation", show=True),
+        Binding("c", "toggle_context", "Context", show=True),
     ]
 
     def __init__(
@@ -90,7 +102,10 @@ class AgentMonitorApp(App):
             with Vertical(id="right-panel"):
                 yield LogStream(self.bridge, id="log-stream-widget")
                 yield StatsPanel(self.bridge, id="stats-panel-widget")
+                yield ContextExplorer(id="context-explorer-widget")
+                yield ValidationGatePanel(id="validation-gate-widget")
 
+        yield PromptInput()
         yield Footer()
 
     def on_mount(self) -> None:
@@ -161,6 +176,18 @@ class AgentMonitorApp(App):
             stats = self.query_one("#stats-panel-widget", StatsPanel)
             stats.refresh_stats()
         except NoMatches:
+            pass
+
+        try:
+            ctx_explorer = self.query_one(ContextExplorer)
+            ctx_explorer.refresh_context(snap.context_summary)
+        except (NoMatches, Exception):
+            pass
+
+        try:
+            gate_panel = self.query_one(ValidationGatePanel)
+            gate_panel.refresh_gates(snap.gate_results)
+        except (NoMatches, Exception):
             pass
 
     # ── Keybinding Actions ──────────────────────────────────
@@ -269,6 +296,29 @@ class AgentMonitorApp(App):
 
     def action_refresh_all(self) -> None:
         self._refresh_all_widgets()
+
+    def action_focus_prompt(self) -> None:
+        """Focus the prompt input field."""
+        try:
+            self.query_one("#prompt-field").focus()
+        except Exception:
+            pass
+
+    def action_toggle_validation(self) -> None:
+        """Toggle validation gate panel visibility."""
+        try:
+            panel = self.query_one(ValidationGatePanel)
+            panel.display = not panel.display
+        except Exception:
+            pass
+
+    def action_toggle_context(self) -> None:
+        """Toggle context explorer visibility."""
+        try:
+            explorer = self.query_one(ContextExplorer)
+            explorer.display = not explorer.display
+        except Exception:
+            pass
 
     def on_unmount(self) -> None:
         """Clean up when the app exits."""

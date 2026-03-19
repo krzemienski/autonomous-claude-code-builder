@@ -16,7 +16,7 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
-from .themes import Theme, DEFAULT_THEME
+from .themes import DEFAULT_THEME, Theme
 
 
 @dataclass
@@ -130,7 +130,11 @@ class ToolBoard:
         return Panel(
             table,
             title="[bold]Tool Board[/]",
-            border_style=self.theme.border_active if self._current_tool else self.theme.border_inactive,
+            border_style=(
+                self.theme.border_active
+                if self._current_tool
+                else self.theme.border_inactive
+            ),
             padding=(0, 1),
         )
 
