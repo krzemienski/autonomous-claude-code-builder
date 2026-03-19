@@ -1,0 +1,3 @@
+Greenfield: WorkflowType.GREENFIELD_APP
+Brownfield: WorkflowType.BROWNFIELD_TASK
+Router: PASS

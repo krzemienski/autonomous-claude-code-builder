@@ -86,7 +86,7 @@ def ask_clarification(question: ClarificationQuestion) -> str | None:
 async def interactive_enhancement(
     initial_description: str,
     max_rounds: int = 3,
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
 ) -> ProjectSpec:
     """
     Run interactive spec enhancement loop.
@@ -173,7 +173,6 @@ async def interactive_enhancement(
 
 def save_spec_to_file(spec: ProjectSpec, path: str) -> None:
     """Save specification to JSON file."""
-    import json
     from pathlib import Path
 
     filepath = Path(path)

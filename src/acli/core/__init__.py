@@ -3,6 +3,8 @@
 from .agent import load_prompt_template, run_agent_session
 from .client import (
     BUILTIN_TOOLS,
+    MODEL_OPUS,
+    MODEL_SONNET,
     PLAYWRIGHT_TOOLS,
     PUPPETEER_TOOLS,
     create_sdk_client,
@@ -23,6 +25,8 @@ __all__ = [
     "StreamingHandler",
     # Client
     "create_sdk_client",
+    "MODEL_OPUS",
+    "MODEL_SONNET",
     "BUILTIN_TOOLS",
     "PUPPETEER_TOOLS",
     "PLAYWRIGHT_TOOLS",

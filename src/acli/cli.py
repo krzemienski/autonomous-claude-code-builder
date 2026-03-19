@@ -38,7 +38,7 @@ console = Console()
 
 
 async def _run_tui_with_orchestrator(
-    orchestrator: "AgentOrchestrator",
+    orchestrator: object,
     project_dir: Path,
 ) -> None:
     """Run the TUI and orchestrator concurrently, cancelling the other when one completes."""
@@ -208,7 +208,7 @@ def run(
     model: Annotated[
         str,
         typer.Option("--model", "-m", help="Claude model to use"),
-    ] = "claude-sonnet-4-20250514",
+    ] = "claude-sonnet-4-6",
     max_iterations: Annotated[
         Optional[int],
         typer.Option("--max-iterations", help="Max sessions (None = unlimited)"),
@@ -225,6 +225,10 @@ def run(
         bool,
         typer.Option("--verbose", "-v", help="Enable verbose logging"),
     ] = False,
+    prompt: Annotated[
+        Optional[str],
+        typer.Option("--prompt", "-p", help="Arbitrary task prompt (v2)"),
+    ] = None,
 ) -> None:
     """
     Run the autonomous coding loop.
@@ -451,7 +455,7 @@ def config(
 
     # Default config
     default_config = {
-        "model": "claude-sonnet-4-20250514",
+        "model": "claude-sonnet-4-6",
         "max_iterations": None,
         "dashboard": True,
         "auto_commit": True,
@@ -562,7 +566,7 @@ def monitor(
     model: Annotated[
         str,
         typer.Option("--model", "-m", help="Claude model to use"),
-    ] = "claude-sonnet-4-20250514",
+    ] = "claude-sonnet-4-6",
     max_iterations: Annotated[
         Optional[int],
         typer.Option("--max-iterations", help="Max sessions (None = unlimited)"),
@@ -619,6 +623,258 @@ def monitor(
             project_dir=project_dir,
         )
         tui.run()
+
+
+# ── v2 Commands ──────────────────────────────────────────
+
+
+@app.command()
+def onboard(
+    project_dir: Annotated[
+        Path,
+        typer.Argument(help="Project directory to onboard"),
+    ] = Path("."),
+) -> None:
+    """
+    Onboard an existing codebase for autonomous development.
+
+    Runs brownfield analysis: tech stack detection, architecture mapping,
+    convention detection, and context store population.
+    """
+    project_dir = project_dir.resolve()
+    if not project_dir.exists():
+        console.print(f"[red]Error:[/] Directory '{project_dir}' not found")
+        raise typer.Exit(1)
+
+    console.print(Panel(
+        f"[bold]Onboarding project:[/] {project_dir.name}",
+        title="acli onboard",
+        border_style="cyan",
+    ))
+
+    from .context.onboarder import BrownfieldOnboarder
+    from .core.streaming import StreamBuffer, StreamingHandler
+
+    async def _onboard() -> None:
+        buffer = StreamBuffer()
+        streaming = StreamingHandler(buffer)
+        onboarder = BrownfieldOnboarder()
+        result = await onboarder.onboard(project_dir, streaming)
+        console.print("\n[green]Onboarding complete![/]")
+        console.print(f"  Tech stack: {result.get('tech_stack', {})}")
+        console.print(f"  Files analyzed: {result.get('architecture', {}).get('files', 0)}")
+        console.print(f"  Knowledge chunks: {result.get('chunk_count', 0)}")
+
+    asyncio.run(_onboard())
+
+
+@app.command()
+def prompt(
+    task: Annotated[
+        str,
+        typer.Argument(help="Task prompt to execute"),
+    ],
+    project_dir: Annotated[
+        Path,
+        typer.Option("--project", "-p", help="Project directory"),
+    ] = Path("."),
+    model: Annotated[
+        str,
+        typer.Option("--model", "-m", help="Claude model to use"),
+    ] = "claude-sonnet-4-6",
+) -> None:
+    """
+    Send a single task prompt without TUI.
+
+    Executes the task using the v2 orchestrator in headless mode.
+    """
+    project_dir = project_dir.resolve()
+    if not project_dir.exists():
+        console.print(f"[red]Error:[/] Directory '{project_dir}' not found")
+        raise typer.Exit(1)
+
+    console.print(Panel(
+        f"[bold]Task:[/] {task[:100]}",
+        title="acli prompt",
+        border_style="green",
+    ))
+
+    from .core.orchestrator_v2 import EnhancedOrchestrator
+
+    async def _run() -> None:
+        orch = EnhancedOrchestrator(project_dir=project_dir, model=model)
+        await orch.run(task)
+
+    asyncio.run(_run())
+
+
+@app.command()
+def validate(
+    project_dir: Annotated[
+        Path,
+        typer.Argument(help="Project directory to validate"),
+    ] = Path("."),
+) -> None:
+    """
+    Run validation gates on the current project.
+
+    Executes all configured validation gates and reports results.
+    """
+    project_dir = project_dir.resolve()
+    if not project_dir.exists():
+        console.print(f"[red]Error:[/] Directory '{project_dir}' not found")
+        raise typer.Exit(1)
+
+    console.print(Panel(
+        f"[bold]Validating:[/] {project_dir.name}",
+        title="acli validate",
+        border_style="yellow",
+    ))
+
+    from .validation.engine import ValidationEngine
+
+    async def _validate() -> None:
+        engine = ValidationEngine(project_dir)
+        summary = engine.get_phase_summary()
+        console.print(f"  Total gates: {summary['total_gates']}")
+        console.print(f"  Passed: {summary['passed']}")
+        console.print(f"  Failed: {summary['failed']}")
+
+    asyncio.run(_validate())
+
+
+@app.command()
+def session(
+    action: Annotated[
+        str,
+        typer.Argument(help="Action: list, resume, replay"),
+    ] = "list",
+    session_id: Annotated[
+        Optional[str],
+        typer.Argument(help="Session ID for resume/replay"),
+    ] = None,
+    project_dir: Annotated[
+        Path,
+        typer.Option("--project", "-p", help="Project directory"),
+    ] = Path("."),
+) -> None:
+    """
+    Manage agent sessions (list, resume, replay).
+
+    View session history and replay past sessions.
+    """
+    project_dir = project_dir.resolve()
+
+    from .core.session import SessionLogger
+
+    if action == "list":
+        sessions = SessionLogger.list_sessions(project_dir)
+        if not sessions:
+            console.print("[yellow]No sessions found[/]")
+            return
+        table = Table(title="Sessions")
+        table.add_column("ID", style="cyan")
+        table.add_column("Events", style="green")
+        table.add_column("First", style="dim")
+        table.add_column("Last", style="dim")
+        for s in sessions:
+            table.add_row(
+                s.get("session_id", "?"),
+                str(s.get("event_count", 0)),
+                s.get("first_event", ""),
+                s.get("last_event", ""),
+            )
+        console.print(table)
+    elif action == "replay" and session_id:
+        events = SessionLogger.load_session(project_dir, session_id)
+        console.print(f"[bold]Replaying session {session_id} ({len(events)} events)[/]")
+        for event in events:
+            console.print(f"  [{event.get('type', '?')}] {event.get('timestamp', '')}")
+    else:
+        console.print(f"[yellow]Unknown action: {action}[/]")
+        console.print("Usage: acli session list | acli session replay <id>")
+
+
+@app.command()
+def memory(
+    action: Annotated[
+        str,
+        typer.Argument(help="Action: list, add, clear"),
+    ] = "list",
+    fact: Annotated[
+        Optional[str],
+        typer.Argument(help="Fact to add (for 'add' action)"),
+    ] = None,
+    category: Annotated[
+        str,
+        typer.Option("--category", "-c", help="Fact category"),
+    ] = "general",
+    project_dir: Annotated[
+        Path,
+        typer.Option("--project", "-p", help="Project directory"),
+    ] = Path("."),
+) -> None:
+    """
+    Manage project memory (list, add, clear).
+
+    Cross-session facts that persist across agent sessions.
+    """
+    project_dir = project_dir.resolve()
+
+    from .context.memory import MemoryManager
+
+    mem = MemoryManager(project_dir)
+
+    if action == "list":
+        facts = mem.get_facts()
+        if not facts:
+            console.print("[yellow]No memory facts stored[/]")
+            return
+        table = Table(title=f"Project Memory ({mem.fact_count} facts)")
+        table.add_column("Category", style="cyan")
+        table.add_column("Fact", style="green")
+        for f in facts:
+            table.add_row(f.get("category", ""), f.get("fact", "")[:80])
+        console.print(table)
+    elif action == "add" and fact:
+        mem.add_fact(category, fact)
+        console.print(f"[green]Added fact[/] [{category}]: {fact}")
+    elif action == "clear":
+        mem.clear()
+        console.print("[green]Memory cleared[/]")
+    else:
+        console.print("[yellow]Usage: acli memory list | add <fact> | clear[/]")
+
+
+@app.command()
+def context(
+    project_dir: Annotated[
+        Path,
+        typer.Argument(help="Project directory"),
+    ] = Path("."),
+) -> None:
+    """
+    Show project context store contents.
+
+    Displays detected tech stack, architecture, conventions,
+    and onboarding status.
+    """
+    project_dir = project_dir.resolve()
+    if not project_dir.exists():
+        console.print(f"[red]Error:[/] Directory '{project_dir}' not found")
+        raise typer.Exit(1)
+
+    from .context.store import ContextStore
+
+    store = ContextStore(project_dir)
+
+    if not store.is_onboarded():
+        console.print("[yellow]Project not onboarded yet[/]")
+        console.print("Run: acli onboard")
+        return
+
+    summary = store.get_context_summary()
+    console.print(Panel(summary, title="Project Context", border_style="cyan"))
 
 
 if __name__ == "__main__":

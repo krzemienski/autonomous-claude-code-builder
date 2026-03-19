@@ -1,0 +1,4 @@
+JSONL logging (4 events): PASS
+Session listing (1 sessions): PASS
+Session loading: PASS
+ALL SESSION LOGGING: PASS

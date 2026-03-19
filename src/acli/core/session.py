@@ -143,3 +143,84 @@ class ProjectState:
 def get_project_state(project_dir: Path) -> ProjectState:
     """Get or create project state."""
     return ProjectState.load(project_dir)
+
+
+class SessionLogger:
+    """
+    Writes agent session events to JSONL files.
+
+    Matches Claude Code's native session format for compatibility.
+    Stores in .acli/sessions/{session_id}.jsonl
+    """
+
+    def __init__(self, project_dir: Path, session_id: str) -> None:
+        self.project_dir = project_dir
+        self.session_id = session_id
+        self._sessions_dir = project_dir / ".acli" / "sessions"
+        self._sessions_dir.mkdir(parents=True, exist_ok=True)
+        self._file_path = self._sessions_dir / f"{session_id}.jsonl"
+        self._file = open(self._file_path, "a")
+
+    def log_event(self, event_type: str, data: dict[str, Any]) -> None:
+        """Write a single event as a JSONL line."""
+        event = {
+            "type": event_type,
+            "session_id": self.session_id,
+            "timestamp": datetime.now().isoformat(),
+            **data,
+        }
+        self._file.write(json.dumps(event) + "\n")
+        self._file.flush()
+
+    def close(self) -> None:
+        """Close the JSONL file."""
+        if self._file and not self._file.closed:
+            self._file.close()
+
+    @staticmethod
+    def list_sessions(project_dir: Path) -> list[dict[str, Any]]:
+        """List all session files in the project."""
+        sessions_dir = project_dir / ".acli" / "sessions"
+        if not sessions_dir.exists():
+            return []
+
+        sessions: list[dict[str, Any]] = []
+        for f in sorted(sessions_dir.glob("*.jsonl")):
+            session_id = f.stem
+            try:
+                lines = f.read_text().strip().split("\n")
+                first = json.loads(lines[0]) if lines and lines[0] else {}
+                last = json.loads(lines[-1]) if lines and lines[-1] else {}
+                sessions.append({
+                    "session_id": session_id,
+                    "event_count": len(lines),
+                    "first_event": first.get("type", ""),
+                    "last_event": last.get("type", ""),
+                    "file": str(f),
+                })
+            except (json.JSONDecodeError, OSError, IndexError):
+                sessions.append({
+                    "session_id": session_id,
+                    "event_count": 0,
+                    "file": str(f),
+                })
+        return sessions
+
+    @staticmethod
+    def load_session(
+        project_dir: Path, session_id: str
+    ) -> list[dict[str, Any]]:
+        """Load all events from a session file."""
+        sessions_dir = project_dir / ".acli" / "sessions"
+        session_file = sessions_dir / f"{session_id}.jsonl"
+        if not session_file.exists():
+            return []
+
+        events: list[dict[str, Any]] = []
+        try:
+            for line in session_file.read_text().strip().split("\n"):
+                if line:
+                    events.append(json.loads(line))
+        except (json.JSONDecodeError, OSError):
+            pass
+        return events

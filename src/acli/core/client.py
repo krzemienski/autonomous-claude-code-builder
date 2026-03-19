@@ -16,6 +16,14 @@ from claude_agent_sdk.types import HookMatcher
 from ..security import bash_security_hook
 
 
+# Model routing constants (v2)
+MODEL_OPUS = "claude-opus-4-6"
+MODEL_SONNET = "claude-sonnet-4-6"
+
+# Adaptive thinking configurations
+THINKING_OPUS = {"type": "adaptive", "effort": "high"}
+THINKING_SONNET = {"type": "adaptive"}
+
 # MCP tool definitions
 PUPPETEER_TOOLS = [
     "mcp__puppeteer__puppeteer_navigate",
@@ -70,8 +78,9 @@ def create_security_settings(project_dir: Path) -> dict[str, Any]:
 
 def create_sdk_client(
     project_dir: Path,
-    model: str,
+    model: str = MODEL_SONNET,
     system_prompt: str | None = None,
+    model_tier: Literal["opus", "sonnet"] | None = None,
 ) -> ClaudeSDKClient:
     """
     Create Claude SDK client with security configuration.
@@ -87,6 +96,12 @@ def create_sdk_client(
     api_key = os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
         raise ValueError("ANTHROPIC_API_KEY not set")
+
+    # Route model based on tier if specified
+    if model_tier == "opus":
+        model = MODEL_OPUS
+    elif model_tier == "sonnet":
+        model = MODEL_SONNET
 
     project_dir = project_dir.resolve()
     project_dir.mkdir(parents=True, exist_ok=True)
@@ -141,7 +156,7 @@ def create_sdk_client(
             allowed_tools=[*BUILTIN_TOOLS, *PUPPETEER_TOOLS, *PLAYWRIGHT_TOOLS],
             mcp_servers=mcp_servers,
             hooks=hooks,
-            max_turns=100,
+            max_turns=200,
             cwd=str(project_dir),
             settings=str(settings_file),
         )

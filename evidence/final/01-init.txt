@@ -1,0 +1,16 @@
+╭───────────────────────────────── acli init ──────────────────────────────────╮
+│ Initializing project: /tmp/acli_v2_test                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯
+2026-03-19 02:05:56,135 - acli - INFO - Created directory: /tmp/acli_v2_test
+
+Starting spec enhancement...
+
+Spec enhancement will be implemented in Phase 3
+Warning: Git initialization failed (git may not be installed)
+
+Success! Project initialized at: /tmp/acli_v2_test
+
+Next steps:
+  cd /tmp/acli_v2_test
+  acli run
+EXIT: 0

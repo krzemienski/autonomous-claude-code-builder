@@ -1,0 +1,7 @@
+ContextExplorer.compose: exists
+ValidationGatePanel.compose: exists
+PromptInput.compose: exists
+ContextExplorer.refresh_context: exists
+ValidationGatePanel.update_gate + refresh_gates: exists
+PromptInput.on_input_submitted: exists
+ALL NEW TUI WIDGETS: PASS

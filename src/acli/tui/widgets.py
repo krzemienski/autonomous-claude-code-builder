@@ -23,6 +23,107 @@ logger = logging.getLogger(__name__)
 
 
 # ──────────────────────────────────────────────────────────
+# v2 Widgets
+# ──────────────────────────────────────────────────────────
+
+class ContextExplorer(Widget):
+    """Displays project context from ContextStore and MemoryManager."""
+
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self._context_data: str = ""
+        self._memory_facts: list[str] = []
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="context-explorer"):
+            yield Static("[#0abdc6]CONTEXT EXPLORER[/]", id="context-title")
+            yield VerticalScroll(
+                Static("(no context loaded)", id="context-body"),
+                id="context-scroll",
+            )
+
+    def refresh_context(self, context_summary: str = "", facts: list[str] | None = None) -> None:
+        """Refresh context display with data from ContextStore/MemoryManager."""
+        lines: list[str] = []
+
+        if context_summary:
+            lines.append("[#0abdc6]── PROJECT CONTEXT ──[/]")
+            for line in context_summary.split("\n")[:20]:
+                lines.append(f"  [#d7fffe]{line}[/]")
+
+        if facts:
+            lines.append("")
+            lines.append(f"[#ea00d9]── MEMORY ({len(facts)} facts) ──[/]")
+            for fact in facts[:10]:
+                lines.append(f"  [#d7fffe]• {fact}[/]")
+
+        if not lines:
+            lines.append("[#4a6670](no context loaded)[/]")
+
+        try:
+            body = self.query_one("#context-body", Static)
+            body.update("\n".join(lines))
+        except Exception:
+            pass
+
+
+class ValidationGatePanel(Widget):
+    """Displays validation gate status for all phases and tasks."""
+
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self._gates: dict[str, dict[str, str]] = {}
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="validation-gates"):
+            yield Static("[#0abdc6]VALIDATION GATES[/]", id="gates-title")
+            yield VerticalScroll(
+                Static("(no gates)", id="gates-body"),
+                id="gates-scroll",
+            )
+
+    def update_gate(self, gate_id: str, status: str) -> None:
+        """Update a single gate's status."""
+        self._gates[gate_id] = {"status": status}
+        self.refresh_gates()
+
+    def refresh_gates(self, gate_results: list[dict[str, str]] | None = None) -> None:
+        """Refresh all gate displays."""
+        if gate_results:
+            for g in gate_results:
+                self._gates[g.get("gate_id", "")] = g
+
+        lines: list[str] = []
+        status_colors = {
+            "PASS": "#00ff41",
+            "FAIL": "#ff003c",
+            "RUNNING": "#0abdc6",
+            "PENDING": "#4a6670",
+        }
+        status_icons = {
+            "PASS": "✓",
+            "FAIL": "✗",
+            "RUNNING": "→",
+            "PENDING": "○",
+        }
+
+        if not self._gates:
+            lines.append("[#4a6670](no gates)[/]")
+        else:
+            for gate_id, data in self._gates.items():
+                status = data.get("status", "PENDING")
+                color = status_colors.get(status, "#4a6670")
+                icon = status_icons.get(status, "?")
+                lines.append(f"  [{color}]{icon} {gate_id}: {status}[/]")
+
+        try:
+            body = self.query_one("#gates-body", Static)
+            body.update("\n".join(lines))
+        except Exception:
+            pass
+
+
+# ──────────────────────────────────────────────────────────
 # Header Bar
 # ──────────────────────────────────────────────────────────
 

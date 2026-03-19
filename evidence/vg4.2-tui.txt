@@ -1,0 +1,5 @@
+Snapshot fields: PASS
+New keybindings present: True
+CSS: context=True gates=True prompt=True
+Bridge interface: PASS
+ALL TUI UPDATES: PASS
