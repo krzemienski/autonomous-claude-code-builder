@@ -6,7 +6,7 @@ File-based persistence for progress state across sessions.
 """
 
 import json
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Any

@@ -8,8 +8,8 @@ Uses shlex for safe parsing (prevents injection).
 
 import re
 import shlex
-from typing import Callable, NamedTuple
-
+from collections.abc import Callable
+from typing import NamedTuple
 
 # Allowed process names for pkill
 ALLOWED_PKILL_TARGETS: set[str] = {

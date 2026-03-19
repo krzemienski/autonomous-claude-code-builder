@@ -16,7 +16,7 @@ Commands:
 import asyncio
 import sys
 from pathlib import Path
-from typing import Annotated, Optional
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -84,7 +84,7 @@ def version_callback(value: bool) -> None:
 @app.callback()
 def main(
     version: Annotated[
-        Optional[bool],
+        bool | None,
         typer.Option(
             "--version", "-v",
             callback=version_callback,
@@ -108,7 +108,7 @@ def init(
         typer.Option("--template", "-t", help="Project template to use"),
     ] = "default",
     spec: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option("--spec", "-s", help="Path to existing spec file"),
     ] = None,
     interactive: Annotated[
@@ -208,9 +208,9 @@ def run(
     model: Annotated[
         str,
         typer.Option("--model", "-m", help="Claude model to use"),
-    ] = "claude-sonnet-4-20250514",
+    ] = "claude-sonnet-4-6",
     max_iterations: Annotated[
-        Optional[int],
+        int | None,
         typer.Option("--max-iterations", help="Max sessions (None = unlimited)"),
     ] = None,
     dashboard: Annotated[
@@ -260,7 +260,7 @@ def run(
         border_style="green",
     ))
 
-    from .core.orchestrator import AgentOrchestrator
+    from .core.orchestrator_v2 import EnhancedOrchestrator as AgentOrchestrator
 
     orchestrator = AgentOrchestrator(
         project_dir=project_dir,
@@ -341,7 +341,7 @@ def status(
                 features = data["features"]
             else:
                 features = []
-    except (json.JSONDecodeError, IOError) as e:
+    except (OSError, json.JSONDecodeError) as e:
         console.print(f"[red]Error reading feature_list.json:[/] {e}")
         raise typer.Exit(1)
 
@@ -378,11 +378,11 @@ def status(
 @app.command()
 def enhance(
     spec_file: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Argument(help="Path to spec file (or read from stdin)"),
     ] = None,
     output: Annotated[
-        Optional[Path],
+        Path | None,
         typer.Option("--output", "-o", help="Output path for enhanced spec"),
     ] = None,
     format: Annotated[
@@ -429,11 +429,11 @@ def enhance(
 @app.command()
 def config(
     key: Annotated[
-        Optional[str],
+        str | None,
         typer.Argument(help="Config key to get/set"),
     ] = None,
     value: Annotated[
-        Optional[str],
+        str | None,
         typer.Argument(help="Value to set"),
     ] = None,
     list_all: Annotated[
@@ -451,7 +451,7 @@ def config(
 
     # Default config
     default_config = {
-        "model": "claude-sonnet-4-20250514",
+        "model": "claude-sonnet-4-6",
         "max_iterations": None,
         "dashboard": True,
         "auto_commit": True,
@@ -562,9 +562,9 @@ def monitor(
     model: Annotated[
         str,
         typer.Option("--model", "-m", help="Claude model to use"),
-    ] = "claude-sonnet-4-20250514",
+    ] = "claude-sonnet-4-6",
     max_iterations: Annotated[
-        Optional[int],
+        int | None,
         typer.Option("--max-iterations", help="Max sessions (None = unlimited)"),
     ] = None,
     attach: Annotated[
@@ -600,7 +600,7 @@ def monitor(
         feature_file = project_dir / "feature_list.json"
 
         if spec_file.exists() or feature_file.exists():
-            from .core.orchestrator import AgentOrchestrator
+            from .core.orchestrator_v2 import EnhancedOrchestrator as AgentOrchestrator
 
             orchestrator = AgentOrchestrator(
                 project_dir=project_dir,
@@ -619,6 +619,275 @@ def monitor(
             project_dir=project_dir,
         )
         tui.run()
+
+
+# ── New v2 Commands ──────────────────────────────────────
+
+
+@app.command()
+def onboard(
+    project_dir: Annotated[
+        Path,
+        typer.Argument(help="Project directory to onboard"),
+    ] = Path("."),
+    verbose: Annotated[
+        bool,
+        typer.Option("--verbose", "-v", help="Enable verbose output"),
+    ] = False,
+) -> None:
+    """Run brownfield codebase onboarding — analyze existing project."""
+    project_dir = project_dir.resolve()
+    if not project_dir.exists():
+        console.print(f"[red]Error:[/] Directory not found: {project_dir}")
+        raise typer.Exit(1)
+
+    console.print(Panel(
+        f"[bold]Onboarding project:[/] {project_dir.name}",
+        title="acli onboard",
+        border_style="blue",
+    ))
+
+    from .context.onboarder import BrownfieldOnboarder
+    from .core.streaming import StreamBuffer, StreamingHandler
+
+    async def _onboard() -> None:
+        buffer = StreamBuffer()
+        streaming = StreamingHandler(buffer)
+        onboarder = BrownfieldOnboarder()
+        result = await onboarder.onboard(project_dir, streaming)
+        console.print("\n[green]Onboarding complete![/]")
+        console.print(f"  Tech stack: {result.get('tech_stack', {})}")
+        console.print(f"  Files mapped: {result.get('architecture', {}).get('total_files', 0)}")
+        console.print(f"  Knowledge chunks: {result.get('chunks', 0)}")
+
+    asyncio.run(_onboard())
+
+
+@app.command()
+def prompt(
+    project_dir: Annotated[
+        Path,
+        typer.Argument(help="Project directory"),
+    ] = Path("."),
+    text: Annotated[
+        str,
+        typer.Argument(help="Task prompt"),
+    ] = "",
+    model: Annotated[
+        str,
+        typer.Option("--model", "-m", help="Claude model to use"),
+    ] = "claude-sonnet-4-6",
+    max_iterations: Annotated[
+        int | None,
+        typer.Option("--max-iterations", help="Max sessions"),
+    ] = None,
+) -> None:
+    """Send a single task prompt to the v2 orchestrator (headless)."""
+    project_dir = project_dir.resolve()
+    if not project_dir.exists():
+        console.print(f"[red]Error:[/] Directory not found: {project_dir}")
+        raise typer.Exit(1)
+
+    if not text:
+        console.print("[red]Error:[/] Please provide a task prompt")
+        raise typer.Exit(1)
+
+    console.print(Panel(
+        f"[bold]Prompt:[/] {text[:80]}\n"
+        f"Project: {project_dir}\n"
+        f"Model: {model}",
+        title="acli prompt",
+        border_style="green",
+    ))
+
+    from .core.orchestrator_v2 import EnhancedOrchestrator
+
+    async def _run_prompt() -> None:
+        orch = EnhancedOrchestrator(
+            project_dir=project_dir,
+            model=model,
+            max_iterations=max_iterations,
+        )
+        await orch.run(text)
+        console.print("[green]Prompt execution complete.[/]")
+
+    asyncio.run(_run_prompt())
+
+
+@app.command()
+def validate(
+    project_dir: Annotated[
+        Path,
+        typer.Argument(help="Project to validate"),
+    ] = Path("."),
+) -> None:
+    """Run validation gates on project — check evidence and gate results."""
+    project_dir = project_dir.resolve()
+    if not project_dir.exists():
+        console.print(f"[red]Error:[/] Directory not found: {project_dir}")
+        raise typer.Exit(1)
+
+    from .validation.evidence import EvidenceCollector
+
+    evidence_dir = project_dir / ".acli" / "evidence"
+    if not evidence_dir.exists():
+        console.print("[yellow]No evidence directory found.[/] Run some tasks first.")
+        raise typer.Exit(0)
+
+    collector = EvidenceCollector(evidence_dir)
+    evidence_files = collector.list_evidence()
+
+    table = Table(title="Validation Evidence")
+    table.add_column("Name", style="cyan")
+    table.add_column("Size", style="green")
+
+    for ev in evidence_files:
+        table.add_row(ev["name"], f"{ev['size']} bytes")
+
+    console.print(table)
+    console.print(f"\n[dim]Evidence directory: {evidence_dir}[/]")
+
+
+@app.command()
+def context(
+    project_dir: Annotated[
+        Path,
+        typer.Argument(help="Project directory"),
+    ] = Path("."),
+) -> None:
+    """Show project context store — tech stack, analysis, decisions."""
+    project_dir = project_dir.resolve()
+    if not project_dir.exists():
+        console.print(f"[red]Error:[/] Directory not found: {project_dir}")
+        raise typer.Exit(1)
+
+    from .context.store import ContextStore
+
+    store = ContextStore(project_dir)
+    summary = store.get_context_summary()
+    console.print(summary)
+    tech = store.get_tech_stack()
+    if tech:
+        console.print(f"\n[cyan]Tech Stack:[/] {tech}")
+    console.print(f"\n[cyan]Onboarded:[/] {store.is_onboarded()}")
+
+
+# ── Session Subcommands ──────────────────────────────────
+
+session_app = typer.Typer(help="Session management — list and replay JSONL logs")
+app.add_typer(session_app, name="session")
+
+
+@session_app.command("list")
+def session_list(
+    project_dir: Annotated[
+        Path,
+        typer.Argument(help="Project directory"),
+    ] = Path("."),
+) -> None:
+    """List all session logs."""
+    from .core.session import SessionLogger
+
+    sessions = SessionLogger.list_sessions(project_dir.resolve())
+    if not sessions:
+        console.print("[yellow]No sessions found.[/]")
+        return
+
+    table = Table(title="Sessions")
+    table.add_column("Session ID", style="cyan")
+    table.add_column("Size", style="green")
+
+    for s in sessions:
+        table.add_row(s["session_id"], f"{s['size']} bytes")
+
+    console.print(table)
+
+
+@session_app.command("replay")
+def session_replay(
+    session_id: Annotated[str, typer.Argument(help="Session ID to replay")],
+    project_dir: Annotated[
+        Path,
+        typer.Argument(help="Project directory"),
+    ] = Path("."),
+) -> None:
+    """Replay events from a session log."""
+    from .core.session import SessionLogger
+
+    events = SessionLogger.load_session(project_dir.resolve(), session_id)
+    if not events:
+        console.print(f"[yellow]Session '{session_id}' not found or empty.[/]")
+        return
+
+    console.print(f"[bold]Replaying session:[/] {session_id} ({len(events)} events)\n")
+    for event in events:
+        etype = event.get("type", "?")
+        ts = event.get("timestamp", "")[:19]
+        console.print(f"  [{ts}] [cyan]{etype}[/]")
+
+
+# ── Memory Subcommands ───────────────────────────────────
+
+memory_app = typer.Typer(help="Memory management — store and retrieve project facts")
+app.add_typer(memory_app, name="memory")
+
+
+@memory_app.command("list")
+def memory_list(
+    project_dir: Annotated[
+        Path,
+        typer.Argument(help="Project directory"),
+    ] = Path("."),
+) -> None:
+    """List all memory facts."""
+    from .context.memory import MemoryManager
+
+    mem = MemoryManager(project_dir.resolve())
+    facts = mem.get_facts()
+    if not facts:
+        console.print("[yellow]No memory facts stored.[/]")
+        return
+
+    table = Table(title=f"Memory Facts ({len(facts)})")
+    table.add_column("Category", style="cyan")
+    table.add_column("Fact", style="white")
+
+    for f in facts:
+        table.add_row(f["category"], f["fact"][:80])
+
+    console.print(table)
+
+
+@memory_app.command("add")
+def memory_add(
+    category: Annotated[str, typer.Argument(help="Fact category")],
+    fact: Annotated[str, typer.Argument(help="Fact text")],
+    project_dir: Annotated[
+        Path,
+        typer.Option("--project-dir", "-d", help="Project directory"),
+    ] = Path("."),
+) -> None:
+    """Add a memory fact."""
+    from .context.memory import MemoryManager
+
+    mem = MemoryManager(project_dir.resolve())
+    mem.add_fact(category, fact)
+    console.print(f"[green]Added:[/] [{category}] {fact}")
+
+
+@memory_app.command("clear")
+def memory_clear(
+    project_dir: Annotated[
+        Path,
+        typer.Argument(help="Project directory"),
+    ] = Path("."),
+) -> None:
+    """Clear all memory facts."""
+    from .context.memory import MemoryManager
+
+    mem = MemoryManager(project_dir.resolve())
+    mem.clear()
+    console.print("[green]Memory cleared.[/]")
 
 
 if __name__ == "__main__":

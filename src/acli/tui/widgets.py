@@ -587,3 +587,83 @@ class StatsPanel(Widget):
             board.update(output)
         except NoMatches:
             pass
+
+
+class ContextExplorer(Widget):
+    """Displays codebase context: tech stack, file count, memory facts."""
+
+    def __init__(self, bridge: "OrchestratorBridge", **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.bridge = bridge
+
+    def compose(self) -> ComposeResult:
+        from textual.containers import VerticalScroll
+
+        with VerticalScroll():
+            yield Static(
+                "[#0abdc6]CONTEXT EXPLORER[/]\n[#4a6670]No context yet[/]",
+                id="context-content",
+            )
+
+    def refresh_context(self) -> None:
+        """Update context display from bridge snapshot."""
+        snap = self.bridge.snapshot
+        summary = getattr(snap, "context_summary", "") or "No context available"
+
+        lines = ["[#0abdc6]CONTEXT EXPLORER[/]"]
+        for line in summary.split("\n"):
+            if line.strip():
+                lines.append(f"  [#d7fffe]{line}[/]")
+
+        try:
+            content = self.query_one("#context-content", Static)
+            content.update("\n".join(lines))
+        except NoMatches:
+            pass
+
+
+class ValidationGatePanel(Widget):
+    """Displays validation gate status with colored indicators."""
+
+    def __init__(self, bridge: "OrchestratorBridge", **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.bridge = bridge
+
+    def compose(self) -> ComposeResult:
+        from textual.containers import VerticalScroll
+
+        with VerticalScroll():
+            yield Static(
+                "[#0abdc6]VALIDATION GATES[/]\n[#4a6670]No gates yet[/]",
+                id="gates-content",
+            )
+
+    def update_gate(self, gate_id: str, status: str) -> None:
+        """Update a single gate's status."""
+        self.refresh_gates()
+
+    def refresh_gates(self) -> None:
+        """Render all gates from bridge snapshot."""
+        snap = self.bridge.snapshot
+        gate_results = getattr(snap, "gate_results", [])
+
+        lines = ["[#0abdc6]VALIDATION GATES[/]"]
+        if not gate_results:
+            lines.append("  [#4a6670]No gates executed yet[/]")
+        else:
+            for gate in gate_results:
+                gid = gate.get("gate_id", "?")
+                status = gate.get("status", "PENDING")
+                color = {
+                    "PASS": "#00ff41",
+                    "FAIL": "#ff003c",
+                    "RUNNING": "#0abdc6",
+                }.get(status, "#4a6670")
+                icon = {"PASS": "✓", "FAIL": "✗", "RUNNING": "→"}.get(status, "○")
+                lines.append(f"  [{color}]{icon}[/] [{color}]{gid:<20}[/] [{color}]{status}[/]")
+
+        try:
+            content = self.query_one("#gates-content", Static)
+            content.update("\n".join(lines))
+        except NoMatches:
+            pass

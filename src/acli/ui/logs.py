@@ -14,7 +14,7 @@ from rich.console import Console, ConsoleOptions, RenderResult
 from rich.panel import Panel
 from rich.text import Text
 
-from .themes import Theme, DEFAULT_THEME
+from .themes import DEFAULT_THEME, Theme
 
 
 class LogLevel(str, Enum):

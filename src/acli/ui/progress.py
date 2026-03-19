@@ -13,7 +13,7 @@ from rich.progress_bar import ProgressBar
 from rich.table import Table
 from rich.text import Text
 
-from .themes import Theme, DEFAULT_THEME
+from .themes import DEFAULT_THEME, Theme
 
 
 @dataclass

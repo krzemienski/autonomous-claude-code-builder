@@ -6,7 +6,6 @@ Setup and configuration for ClaudeSDKClient with security settings.
 """
 
 import json
-import os
 from pathlib import Path
 from typing import Any, Literal, cast
 
@@ -14,7 +13,11 @@ from claude_agent_sdk import ClaudeAgentOptions, ClaudeSDKClient
 from claude_agent_sdk.types import HookMatcher
 
 from ..security import bash_security_hook
+from ..validation.mock_detector import mock_detection_hook
 
+# Model routing constants (Claude 4.6)
+MODEL_OPUS = "claude-opus-4-6"
+MODEL_SONNET = "claude-sonnet-4-6"
 
 # MCP tool definitions
 PUPPETEER_TOOLS = [
@@ -70,24 +73,23 @@ def create_security_settings(project_dir: Path) -> dict[str, Any]:
 
 def create_sdk_client(
     project_dir: Path,
-    model: str,
+    model: str | None = None,
     system_prompt: str | None = None,
+    model_tier: Literal["opus", "sonnet"] = "sonnet",
 ) -> ClaudeSDKClient:
     """
     Create Claude SDK client with security configuration.
 
     Args:
         project_dir: Project directory (cwd for agent)
-        model: Claude model to use
+        model: Claude model to use (overrides model_tier if set)
         system_prompt: Optional system prompt override
+        model_tier: Model tier for auto-resolution ("opus" or "sonnet")
 
     Returns:
         Configured ClaudeSDKClient
     """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise ValueError("ANTHROPIC_API_KEY not set")
-
+    # SDK inherits auth from the Claude CLI — no API key needed
     project_dir = project_dir.resolve()
     project_dir.mkdir(parents=True, exist_ok=True)
 
@@ -125,23 +127,27 @@ def create_sdk_client(
         {
             "PreToolUse": [
                 HookMatcher(matcher="Bash", hooks=[bash_security_hook]),
+                HookMatcher(matcher="Write|Edit|MultiEdit", hooks=[mock_detection_hook]),
             ],
         },
     )
 
     default_system = (
-        "You are an expert full-stack developer building a production-quality "
-        "web application. Follow best practices and write clean, tested code."
+        "You are an expert software developer building a production-quality "
+        "application. Detect the tech stack from the project files and adapt. "
+        "Follow best practices and write clean, working code."
     )
+
+    resolved_model = model or (MODEL_OPUS if model_tier == "opus" else MODEL_SONNET)
 
     return ClaudeSDKClient(
         options=ClaudeAgentOptions(
-            model=model,
+            model=resolved_model,
             system_prompt=system_prompt or default_system,
             allowed_tools=[*BUILTIN_TOOLS, *PUPPETEER_TOOLS, *PLAYWRIGHT_TOOLS],
             mcp_servers=mcp_servers,
             hooks=hooks,
-            max_turns=100,
+            max_turns=200,
             cwd=str(project_dir),
             settings=str(settings_file),
         )

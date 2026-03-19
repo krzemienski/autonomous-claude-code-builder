@@ -7,7 +7,7 @@ Validates spec completeness and scores quality.
 
 from dataclasses import dataclass
 
-from .schemas import ProjectSpec, ClarificationQuestion
+from .schemas import ClarificationQuestion, ProjectSpec
 
 
 @dataclass
