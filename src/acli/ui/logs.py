@@ -8,16 +8,16 @@ Displays real-time log stream with filtering.
 from collections import deque
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 
 from rich.console import Console, ConsoleOptions, RenderResult
 from rich.panel import Panel
 from rich.text import Text
 
-from .themes import Theme, DEFAULT_THEME
+from .themes import DEFAULT_THEME, Theme
 
 
-class LogLevel(str, Enum):
+class LogLevel(StrEnum):
     DEBUG = "debug"
     INFO = "info"
     WARNING = "warning"
@@ -48,7 +48,10 @@ class LogPanel:
         self.entries: deque[LogEntry] = deque(maxlen=max_entries)
         self.min_level = min_level
         self.theme = theme or DEFAULT_THEME
-        self._level_order = [LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARNING, LogLevel.ERROR, LogLevel.TOOL]
+        self._level_order = [
+            LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARNING,
+            LogLevel.ERROR, LogLevel.TOOL,
+        ]
 
     def add(
         self,

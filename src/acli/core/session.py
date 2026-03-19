@@ -6,10 +6,11 @@ Tracks state across agent sessions.
 """
 
 import json
+import json as _json
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import IO, Any
 
 
 @dataclass
@@ -143,3 +144,72 @@ class ProjectState:
 def get_project_state(project_dir: Path) -> ProjectState:
     """Get or create project state."""
     return ProjectState.load(project_dir)
+
+
+class SessionLogger:
+    """
+    Writes agent session events to JSONL files.
+
+    Each session creates a file: .acli/sessions/{session_id}.jsonl
+    Each line is a JSON object with type, timestamp, and event-specific fields.
+    """
+
+    def __init__(self, project_dir: Path, session_id: str) -> None:
+        """Initialize logger for a session."""
+        self.project_dir = project_dir
+        self.session_id = session_id
+        self.sessions_dir = project_dir / ".acli" / "sessions"
+        self.sessions_dir.mkdir(parents=True, exist_ok=True)
+        self.log_file = self.sessions_dir / f"{session_id}.jsonl"
+        self._file: IO[str] = open(self.log_file, "a")  # noqa: SIM115
+
+    def log_event(self, event_type: str, data: dict[str, Any]) -> None:
+        """Log a single event as a JSONL line."""
+        entry = {
+            "type": event_type,
+            "session_id": self.session_id,
+            "timestamp": datetime.now(UTC).isoformat(),
+            **data,
+        }
+        self._file.write(_json.dumps(entry) + "\n")
+        self._file.flush()
+
+    def close(self) -> None:
+        """Close the log file."""
+        if self._file and not self._file.closed:
+            self._file.close()
+
+    @staticmethod
+    def list_sessions(project_dir: Path) -> list[dict[str, Any]]:
+        """List all session log files with metadata."""
+        sessions_dir = project_dir / ".acli" / "sessions"
+        if not sessions_dir.exists():
+            return []
+
+        sessions: list[dict[str, Any]] = []
+        for log_file in sorted(sessions_dir.glob("*.jsonl")):
+            stat = log_file.stat()
+            sessions.append({
+                "session_id": log_file.stem,
+                "file": str(log_file),
+                "size_bytes": stat.st_size,
+                "modified": datetime.fromtimestamp(
+                    stat.st_mtime, tz=UTC
+                ).isoformat(),
+            })
+        return sessions
+
+    @staticmethod
+    def load_session(project_dir: Path, session_id: str) -> list[dict[str, Any]]:
+        """Load all events from a session log file."""
+        log_file = project_dir / ".acli" / "sessions" / f"{session_id}.jsonl"
+        if not log_file.exists():
+            return []
+
+        events: list[dict[str, Any]] = []
+        with open(log_file) as f:
+            for line in f:
+                line = line.strip()
+                if line:
+                    events.append(_json.loads(line))
+        return events

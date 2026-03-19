@@ -6,13 +6,13 @@ Pydantic models for structured specification output.
 Used with Claude structured outputs for guaranteed schema compliance.
 """
 
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, Field
 
 
-class Priority(str, Enum):
+class Priority(StrEnum):
     """Feature priority levels."""
     HIGH = "high"
     MEDIUM = "medium"

@@ -7,14 +7,15 @@ session management and automatic continuation.
 """
 
 import asyncio
+from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from ..utils import logger
 from .agent import load_prompt_template, run_agent_session
 from .client import create_sdk_client
-from .session import ProjectState, get_project_state
-from .streaming import EventType, StreamBuffer, StreamingHandler
+from .session import get_project_state
+from .streaming import StreamBuffer, StreamingHandler
 
 # Configuration
 AUTO_CONTINUE_DELAY = 3.0  # seconds between sessions
@@ -35,7 +36,7 @@ class AgentOrchestrator:
     def __init__(
         self,
         project_dir: Path,
-        model: str = "claude-sonnet-4-20250514",
+        model: str = "claude-sonnet-4-6",
         max_iterations: int | None = None,
     ):
         self.project_dir = project_dir.resolve()
@@ -258,7 +259,7 @@ async def _maybe_await(result: Any) -> Any:
 
 async def run_autonomous_agent(
     project_dir: Path,
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
     max_iterations: int | None = None,
 ) -> None:
     """

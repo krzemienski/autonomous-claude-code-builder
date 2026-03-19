@@ -7,7 +7,8 @@ Simple async event emitter for streaming events.
 
 import asyncio
 from collections import defaultdict
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 
 class AsyncEventEmitter:  # type: ignore[misc]

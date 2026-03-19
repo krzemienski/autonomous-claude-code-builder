@@ -7,7 +7,7 @@ Validates spec completeness and scores quality.
 
 from dataclasses import dataclass
 
-from .schemas import ProjectSpec, ClarificationQuestion
+from .schemas import ClarificationQuestion, ProjectSpec
 
 
 @dataclass
@@ -56,7 +56,10 @@ def check_user_stories(spec: ProjectSpec) -> tuple[bool, str]:
     """Check features have user stories."""
     for feat in spec.features:
         if not feat.user_story or "want" not in feat.user_story.lower():
-            return False, f"Feature '{feat.name}' needs proper user story (As a... I want... so that...)"
+            return False, (
+                f"Feature '{feat.name}' needs proper user story"
+                " (As a... I want... so that...)"
+            )
     return True, ""
 
 
@@ -117,7 +120,11 @@ def generate_clarifications(
         if "vague terms" in issue.lower():
             questions.append(ClarificationQuestion(
                 field="description",
-                question="Some terms need more specificity. What does 'fast' mean in terms of response time (e.g., <100ms, <500ms)?",
+                question=(
+                    "Some terms need more specificity. "
+                    "What does 'fast' mean in terms of "
+                    "response time (e.g., <100ms, <500ms)?"
+                ),
                 suggestions=["<100ms", "<500ms", "<1s", "<2s"],
                 required=False,
             ))
