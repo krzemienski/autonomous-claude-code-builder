@@ -1,0 +1,3 @@
+CLIValidator (real echo): PASS
+GenericValidator (real python): PASS
+ALL PLATFORM VALIDATORS: PASS

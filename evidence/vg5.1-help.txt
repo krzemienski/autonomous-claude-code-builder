@@ -1,0 +1,28 @@
+                                                                                
+ Usage: python -m acli [OPTIONS] COMMAND [ARGS]...                              
+                                                                                
+ Autonomous CLI for interactive AI-powered coding                               
+                                                                                
+╭─ Options ────────────────────────────────────────────────────────────────────╮
+│ --version             -v        Show version and exit                        │
+│ --install-completion            Install completion for the current shell.    │
+│ --show-completion               Show completion for the current shell, to    │
+│                                 copy it or customize the installation.       │
+│ --help                          Show this message and exit.                  │
+╰──────────────────────────────────────────────────────────────────────────────╯
+╭─ Commands ───────────────────────────────────────────────────────────────────╮
+│ init         Initialize a new autonomous coding project.                     │
+│ run          Run the autonomous coding loop.                                 │
+│ status       Show project progress status.                                   │
+│ enhance      Enhance a plain-English spec into structured format.            │
+│ config       Manage acli configuration.                                      │
+│ list-skills  List available skills in ~/.claude/skills/                      │
+│ monitor      Launch the cyberpunk TUI for real-time agent monitoring.        │
+│ onboard      Onboard an existing codebase for autonomous development.        │
+│ prompt       Send a single task prompt without TUI.                          │
+│ validate     Run validation gates on the current project.                    │
+│ session      Manage agent sessions (list, resume, replay).                   │
+│ memory       Manage project memory (list, add, clear).                       │
+│ context      Show project context store contents.                            │
+╰──────────────────────────────────────────────────────────────────────────────╯
+

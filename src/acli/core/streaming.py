@@ -27,6 +27,21 @@ class EventType(str, Enum):
     SESSION_END = "session_end"
     PROGRESS = "progress"
 
+    # v2 additions
+    AGENT_SPAWN = "agent_spawn"
+    AGENT_COMPLETE = "agent_complete"
+    ANALYSIS_UPDATE = "analysis_update"
+    PLAN_CREATED = "plan_created"
+    PHASE_START = "phase_start"
+    PHASE_END = "phase_end"
+    GATE_START = "gate_start"
+    GATE_RESULT = "gate_result"
+    CONTEXT_UPDATE = "context_update"
+    MEMORY_UPDATE = "memory_update"
+    THINKING = "thinking"
+    MOCK_DETECTED = "mock_detected"
+    PROMPT_RECEIVED = "prompt_received"
+
 
 @dataclass
 class StreamEvent:
@@ -53,6 +68,23 @@ class StreamEvent:
     # Progress fields
     features_done: int = 0
     features_total: int = 0
+
+    # v2 fields — agent lifecycle
+    agent_id: str = ""
+    agent_type: str = ""
+    model: str = ""
+
+    # v2 fields — validation gates
+    gate_id: str = ""
+    gate_status: str = ""
+    evidence_path: str = ""
+
+    # v2 fields — phases
+    phase_id: str = ""
+    phase_name: str = ""
+
+    # v2 fields — memory
+    memory_fact: str = ""
 
 
 class StreamBuffer:
@@ -193,5 +225,83 @@ class StreamingHandler:
             type=EventType.PROGRESS,
             features_done=done,
             features_total=total,
+        )
+        await self.emit(event)
+
+    # ── v2 handler methods ──────────────────────────────────
+
+    async def handle_agent_spawn(
+        self, agent_id: str, agent_type: str, model: str
+    ) -> None:
+        """Handle agent spawn event."""
+        event = StreamEvent(
+            type=EventType.AGENT_SPAWN,
+            agent_id=agent_id,
+            agent_type=agent_type,
+            model=model,
+        )
+        await self.emit(event)
+
+    async def handle_agent_complete(self, agent_id: str, status: str) -> None:
+        """Handle agent completion event."""
+        event = StreamEvent(
+            type=EventType.AGENT_COMPLETE,
+            agent_id=agent_id,
+            gate_status=status,
+        )
+        await self.emit(event)
+
+    async def handle_gate_start(self, gate_id: str, criteria: str) -> None:
+        """Handle validation gate start."""
+        event = StreamEvent(
+            type=EventType.GATE_START,
+            gate_id=gate_id,
+            text=criteria,
+        )
+        await self.emit(event)
+
+    async def handle_gate_result(
+        self, gate_id: str, status: str, evidence_path: str
+    ) -> None:
+        """Handle validation gate result."""
+        event = StreamEvent(
+            type=EventType.GATE_RESULT,
+            gate_id=gate_id,
+            gate_status=status,
+            evidence_path=evidence_path,
+        )
+        await self.emit(event)
+
+    async def handle_context_update(self, key: str, summary: str) -> None:
+        """Handle context store update."""
+        event = StreamEvent(
+            type=EventType.CONTEXT_UPDATE,
+            text=f"{key}: {summary}",
+        )
+        await self.emit(event)
+
+    async def handle_memory_update(self, fact: str) -> None:
+        """Handle memory fact update."""
+        event = StreamEvent(
+            type=EventType.MEMORY_UPDATE,
+            memory_fact=fact,
+        )
+        await self.emit(event)
+
+    async def handle_phase_start(self, phase_id: str, phase_name: str) -> None:
+        """Handle phase start event."""
+        event = StreamEvent(
+            type=EventType.PHASE_START,
+            phase_id=phase_id,
+            phase_name=phase_name,
+        )
+        await self.emit(event)
+
+    async def handle_phase_end(self, phase_id: str, status: str) -> None:
+        """Handle phase end event."""
+        event = StreamEvent(
+            type=EventType.PHASE_END,
+            phase_id=phase_id,
+            gate_status=status,
         )
         await self.emit(event)

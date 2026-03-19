@@ -71,6 +71,10 @@ class OrchestratorSnapshot:
     total_errors: int = 0
     events_processed: int = 0
 
+    # v2 fields
+    context_summary: str = ""
+    gate_results: list[dict[str, str]] = field(default_factory=list)
+
 
 class OrchestratorBridge:
     """
@@ -249,6 +253,42 @@ class OrchestratorBridge:
         elif event.type == EventType.TEXT:
             if self._current_agent:
                 self._current_agent.last_text = event.text[:500]
+
+        # v2 event types
+        elif event.type == EventType.GATE_START:
+            self._snapshot.gate_results.append({
+                "gate_id": event.gate_id,
+                "status": "RUNNING",
+            })
+        elif event.type == EventType.GATE_RESULT:
+            # Update existing or append
+            for g in self._snapshot.gate_results:
+                if g.get("gate_id") == event.gate_id:
+                    g["status"] = event.gate_status
+                    break
+            else:
+                self._snapshot.gate_results.append({
+                    "gate_id": event.gate_id,
+                    "status": event.gate_status,
+                })
+        elif event.type == EventType.CONTEXT_UPDATE:
+            self._snapshot.context_summary = event.text
+        elif event.type == EventType.MEMORY_UPDATE:
+            pass  # Handled by MemoryManager
+        elif event.type == EventType.AGENT_SPAWN:
+            node = AgentNode(
+                agent_id=event.agent_id,
+                agent_type=event.agent_type,
+                status="running",
+                start_time=event.timestamp,
+            )
+            self._root.children.append(node)
+            self._current_agent = node
+        elif event.type == EventType.AGENT_COMPLETE:
+            if self._current_agent and self._current_agent.agent_id == event.agent_id:
+                self._current_agent.status = "completed"
+                self._current_agent.end_time = event.timestamp
+                self._current_agent = None
 
         # Notify TUI callbacks
         for cb in self._callbacks:

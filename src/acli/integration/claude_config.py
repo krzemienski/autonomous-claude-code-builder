@@ -112,7 +112,7 @@ def get_api_key() -> str | None:
 def get_default_model() -> str:
     """Get default model from config or use fallback."""
     config = discover_claude_config()
-    return config.default_model or "claude-sonnet-4-20250514"
+    return config.default_model or "claude-sonnet-4-6"
 
 
 def get_mcp_servers() -> dict[str, Any]:

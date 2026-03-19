@@ -16,9 +16,6 @@ from pydantic import ValidationError
 from .schemas import (
     ProjectSpec,
     TechStack,
-    FeatureSpec,
-    Requirement,
-    Priority,
     EnhancementResult,
 )
 from .validator import validate_spec, generate_clarifications
@@ -57,7 +54,7 @@ async def call_claude_api(
     system_prompt: str,
     user_prompt: str,
     response_schema: dict[str, Any],
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
 ) -> dict[str, Any]:
     """
     Call Claude API with structured output.
@@ -107,7 +104,7 @@ def get_project_spec_schema() -> dict[str, Any]:
 
 async def enhance_spec(
     description: str,
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
 ) -> EnhancementResult:
     """
     Enhance plain-text description into structured specification.
@@ -134,7 +131,7 @@ async def enhance_spec(
         # Parse into Pydantic model
         spec = ProjectSpec.model_validate(result)
 
-    except ValidationError as e:
+    except ValidationError:
         # Fallback: create minimal spec
         spec = ProjectSpec(
             name="Untitled Project",
@@ -184,7 +181,7 @@ def detect_ambiguities(text: str) -> list[str]:
 async def refine_spec_with_answers(
     spec: ProjectSpec,
     answers: dict[str, str],
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
 ) -> EnhancementResult:
     """
     Refine specification with clarification answers.

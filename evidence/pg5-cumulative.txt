@@ -1,0 +1,5 @@
+acli init exit: 0
+  app_spec.txt: exists
+  .gitignore: exists
+acli status exit: 0
+PHASE 5 GATE: PASS

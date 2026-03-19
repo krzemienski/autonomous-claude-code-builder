@@ -1,0 +1,2 @@
+CLI import: PASS
+PHASE 4 GATE: ALL PASS — Full import chain from every phase

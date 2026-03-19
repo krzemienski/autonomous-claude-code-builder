@@ -393,6 +393,105 @@ Sparkline > .sparkline--max-color {
     color: #133e7c;
 }
 
+/* ── Context Explorer (v2) ─────────────────────────────── */
+
+#context-explorer {
+    height: auto;
+    max-height: 12;
+    padding: 0 1;
+    border-top: heavy #133e7c;
+}
+
+#context-title {
+    color: #0abdc6;
+    text-style: bold;
+    height: 1;
+}
+
+#context-scroll {
+    height: 1fr;
+    max-height: 10;
+}
+
+ContextExplorer {
+    height: auto;
+    max-height: 14;
+}
+
+/* ── Validation Gates (v2) ─────────────────────────────── */
+
+#validation-gates {
+    height: auto;
+    max-height: 10;
+    padding: 0 1;
+    border-top: heavy #133e7c;
+}
+
+#gates-title {
+    color: #0abdc6;
+    text-style: bold;
+    height: 1;
+}
+
+#gates-scroll {
+    height: 1fr;
+    max-height: 8;
+}
+
+ValidationGatePanel {
+    height: auto;
+    max-height: 12;
+}
+
+.gate-pass {
+    color: #00ff41;
+}
+
+.gate-fail {
+    color: #ff003c;
+}
+
+.gate-running {
+    color: #0abdc6;
+}
+
+.gate-pending {
+    color: #4a6670;
+}
+
+/* ── Prompt Input (v2) ─────────────────────────────────── */
+
+#prompt-container {
+    height: 3;
+    dock: bottom;
+    background: #001a33;
+    border-top: heavy #133e7c;
+    padding: 0 1;
+}
+
+#prompt-icon {
+    width: 3;
+    height: 1;
+    color: #0abdc6;
+    content-align: center middle;
+}
+
+#prompt-field {
+    width: 1fr;
+    background: #000b1e;
+    color: #d7fffe;
+    border: solid #133e7c;
+}
+
+#prompt-field:focus {
+    border: solid #0abdc6;
+}
+
+PromptInput {
+    height: 3;
+    dock: bottom;
+}
+
 /* ── Hover / Focus Glows ────────────────────────────────── */
 
 .glow-cyan:hover {

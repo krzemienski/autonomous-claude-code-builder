@@ -1,0 +1,5 @@
+Content detection: 9/9 correct
+Content detection: PASS
+Path detection: 6/6 correct
+Path detection: PASS
+ALL MOCK DETECTOR: PASS

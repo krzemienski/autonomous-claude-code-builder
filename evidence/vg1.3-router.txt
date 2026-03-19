@@ -1,0 +1,5 @@
+Greenfield: WorkflowType.GREENFIELD_APP — PASS
+Brownfield: WorkflowType.BROWNFIELD_TASK — PASS
+Debug: WorkflowType.DEBUG — PASS
+iOS: WorkflowType.IOS_APP — PASS
+ALL ROUTER CLASSIFICATIONS: PASS

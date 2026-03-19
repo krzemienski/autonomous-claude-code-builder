@@ -1,0 +1,15 @@
+init --help: OK
+run --help: OK
+monitor --help: OK
+status --help: OK
+enhance --help: OK
+config --help: OK
+list-skills --help: OK
+onboard --help: OK
+prompt --help: OK
+validate --help: OK
+session --help: OK
+memory --help: OK
+context --help: OK
+No stale model strings in cli.py: PASS
+ALL CLI COMMANDS: PASS
