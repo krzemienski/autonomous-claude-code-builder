@@ -7,18 +7,17 @@ CLI interface for iterative spec enhancement with user feedback.
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.prompt import Prompt, Confirm
-from rich.table import Table
+from rich.prompt import Confirm, Prompt
 from rich.syntax import Syntax
+from rich.table import Table
 
-from .schemas import (
-    ProjectSpec,
-    EnhancementResult,
-    ClarificationQuestion,
-)
 from .enhancer import enhance_spec, refine_spec_with_answers
-from .validator import is_spec_complete, get_completeness_threshold
-
+from .schemas import (
+    ClarificationQuestion,
+    EnhancementResult,
+    ProjectSpec,
+)
+from .validator import get_completeness_threshold, is_spec_complete
 
 console = Console()
 
@@ -86,7 +85,7 @@ def ask_clarification(question: ClarificationQuestion) -> str | None:
 async def interactive_enhancement(
     initial_description: str,
     max_rounds: int = 3,
-    model: str = "claude-sonnet-4-20250514",
+    model: str = "claude-sonnet-4-6",
 ) -> ProjectSpec:
     """
     Run interactive spec enhancement loop.
@@ -173,7 +172,6 @@ async def interactive_enhancement(
 
 def save_spec_to_file(spec: ProjectSpec, path: str) -> None:
     """Save specification to JSON file."""
-    import json
     from pathlib import Path
 
     filepath = Path(path)

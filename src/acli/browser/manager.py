@@ -10,15 +10,15 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
-from .puppeteer import (
-    PuppeteerConfig,
-    PuppeteerHelper,
-    get_puppeteer_tool_list,
-)
 from .playwright import (
     PlaywrightConfig,
     PlaywrightHelper,
     get_playwright_tool_list,
+)
+from .puppeteer import (
+    PuppeteerConfig,
+    PuppeteerHelper,
+    get_puppeteer_tool_list,
 )
 
 

@@ -6,14 +6,19 @@ Core agent interaction using Claude Agent SDK.
 Handles message streaming and tool execution tracking.
 """
 
-import asyncio
 from pathlib import Path
-from typing import Any
 
 from claude_agent_sdk import ClaudeSDKClient
+from claude_agent_sdk.types import (
+    AssistantMessage,
+    RateLimitEvent,
+    ResultMessage,
+    StreamEvent,
+    SystemMessage,
+    UserMessage,
+)
 
 from ..utils import logger
-from .client import create_sdk_client
 from .streaming import StreamingHandler
 
 
@@ -39,39 +44,70 @@ async def run_agent_session(
         await client.query(prompt)
 
         response_text = ""
+        result_info: dict = {}
 
         async for msg in client.receive_response():
-            msg_type = type(msg).__name__
-
-            if msg_type == "AssistantMessage" and hasattr(msg, "content"):
+            if isinstance(msg, AssistantMessage):
                 for block in msg.content:
                     block_type = type(block).__name__
 
                     if block_type == "TextBlock" and hasattr(block, "text"):
-                        text = block.text
-                        response_text += text
-                        await streaming.handle_text(text)
+                        response_text += block.text
+                        await streaming.handle_text(block.text)
 
                     elif block_type == "ToolUseBlock" and hasattr(block, "name"):
-                        tool_name = block.name
-                        tool_input = getattr(block, "input", {})
-                        await streaming.handle_tool_start(tool_name, tool_input)
+                        await streaming.handle_tool_start(
+                            block.name, getattr(block, "input", {}),
+                        )
 
-            elif msg_type == "UserMessage" and hasattr(msg, "content"):
-                for block in msg.content:
-                    block_type = type(block).__name__
+            elif isinstance(msg, UserMessage):
+                content = msg.content
+                if isinstance(content, list):
+                    for block in content:
+                        block_type = type(block).__name__
+                        if block_type == "ToolResultBlock":
+                            tc = getattr(block, "content", "")
+                            is_error = getattr(block, "is_error", False)
 
-                    if block_type == "ToolResultBlock":
-                        content = getattr(block, "content", "")
-                        is_error = getattr(block, "is_error", False)
+                            if "blocked" in str(tc).lower():
+                                await streaming.handle_tool_blocked(
+                                    "Bash", str(tc),
+                                )
+                            elif is_error:
+                                await streaming.handle_tool_end(
+                                    "", error=str(tc)[:500],
+                                )
+                            else:
+                                await streaming.handle_tool_end(
+                                    "", result="Success",
+                                )
 
-                        if "blocked" in str(content).lower():
-                            # Extract tool name from previous context
-                            await streaming.handle_tool_blocked("Bash", str(content))
-                        elif is_error:
-                            await streaming.handle_tool_end("", error=str(content)[:500])
-                        else:
-                            await streaming.handle_tool_end("", result="Success")
+            elif isinstance(msg, ResultMessage):
+                result_info = {
+                    "turns": msg.num_turns,
+                    "cost_usd": msg.total_cost_usd,
+                    "stop_reason": msg.stop_reason,
+                    "is_error": msg.is_error,
+                }
+                logger.info(
+                    f"Session result: {msg.num_turns} turns, "
+                    f"${msg.total_cost_usd:.4f}, stop={msg.stop_reason}",
+                )
+
+            elif isinstance(msg, RateLimitEvent):
+                logger.debug("Rate limit event received, continuing...")
+
+            elif isinstance(msg, SystemMessage):
+                logger.debug(f"System message: {msg.subtype}")
+
+            elif isinstance(msg, StreamEvent):
+                pass  # Low-level stream events — skip
+
+            else:
+                logger.debug(f"Unhandled message type: {type(msg).__name__}")
+
+        if result_info.get("is_error"):
+            return "error", response_text or "Session ended with error"
 
         return "continue", response_text
 
@@ -92,35 +128,38 @@ def load_prompt_template(name: str) -> str:
 
     # Fallback prompts
     if name == "initializer":
-        return """Read the app_spec.txt file and create:
+        return """Read app_spec.txt and create:
 
-1. feature_list.json with ~200 detailed test cases
+1. feature_list.json with 100-200 testable features
    - Each feature: {id, component, description, passes: false}
-   - Cover all UI components, interactions, edge cases
-   - Group by component
+   - Cover all functionality, edge cases, error handling
+   - Group by component/module
+   - Order from foundational to advanced
 
-2. init.sh script for environment setup
-   - Install dependencies
-   - Configure development server
+2. init.sh setup script (detect tech stack from spec)
+   - Python: pip install -e . or poetry install
+   - Node: npm install
+   - Adapt to what the spec requires
 
-3. Initial project structure
-   - package.json
-   - Source directories
-   - Configuration files
+3. Project structure appropriate for the tech stack
+   - Python: src/ package, pyproject.toml
+   - Node: src/, package.json
+   - Create source dirs and config files
 
-Start by reading app_spec.txt, then generate the feature list."""
+Start by reading app_spec.txt."""
 
     elif name == "coding":
         return """Continue development:
 
 1. Read feature_list.json to see progress
-2. Check git status
-3. Start dev server if not running
+2. Check git status and existing code
+3. Set up environment if needed (./init.sh or equivalent)
 4. Pick ONE incomplete feature (passes: false)
-5. Implement and test using browser automation
-6. Update feature_list.json (passes: true)
-7. Commit changes
+5. Implement the feature
+6. Test by running the project (CLI, API, or script execution)
+7. Update feature_list.json (passes: true)
+8. Commit changes
 
-Focus on one feature at a time. Test thoroughly."""
+Focus on one feature at a time. Test before marking as passing."""
 
     return f"Error: Unknown prompt template '{name}'"

@@ -16,12 +16,21 @@ from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.css.query import NoMatches
-from textual.widgets import Footer, Static
+from textual.widgets import Footer, Input
 
-from ..core.orchestrator import AgentOrchestrator
+from ..core.orchestrator_v2 import EnhancedOrchestrator as AgentOrchestrator
 from ..core.streaming import StreamEvent
 from .bridge import OrchestratorBridge
-from .widgets import AgentDetail, AgentGraph, CyberHeader, LogStream, StatsPanel
+from .prompt_input import PromptInput
+from .widgets import (
+    AgentDetail,
+    AgentGraph,
+    ContextExplorer,
+    CyberHeader,
+    LogStream,
+    StatsPanel,
+    ValidationGatePanel,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +70,9 @@ class AgentMonitorApp(App):
         Binding("f3", "filter_errors", "Error Logs"),
         Binding("f4", "filter_text", "Text Logs"),
         Binding("r", "refresh_all", "Refresh", show=False),
+        Binding("slash", "focus_prompt", "Prompt", show=True),
+        Binding("v", "toggle_validation", "Validation", show=False),
+        Binding("c", "toggle_context", "Context", show=False),
     ]
 
     def __init__(
@@ -81,16 +93,19 @@ class AgentMonitorApp(App):
         yield CyberHeader()
 
         with Horizontal(id="main-container"):
-            # Left panel: Agent graph + detail
+            # Left panel: Agent graph + detail + context
             with Vertical(id="left-panel"):
                 yield AgentGraph(self.bridge, id="agent-graph-widget")
                 yield AgentDetail(self.bridge, id="agent-detail-widget")
+                yield ContextExplorer(self.bridge, id="context-explorer-widget")
 
-            # Right panel: Logs + Stats
+            # Right panel: Logs + Validation + Stats
             with Vertical(id="right-panel"):
                 yield LogStream(self.bridge, id="log-stream-widget")
+                yield ValidationGatePanel(self.bridge, id="validation-gate-widget")
                 yield StatsPanel(self.bridge, id="stats-panel-widget")
 
+        yield PromptInput(id="prompt-input-widget")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -160,6 +175,18 @@ class AgentMonitorApp(App):
         try:
             stats = self.query_one("#stats-panel-widget", StatsPanel)
             stats.refresh_stats()
+        except NoMatches:
+            pass
+
+        try:
+            context = self.query_one("#context-explorer-widget", ContextExplorer)
+            context.refresh_context()
+        except NoMatches:
+            pass
+
+        try:
+            gates = self.query_one("#validation-gate-widget", ValidationGatePanel)
+            gates.refresh_gates()
         except NoMatches:
             pass
 
@@ -264,6 +291,31 @@ class AgentMonitorApp(App):
             log = self.query_one("#log-stream-widget", LogStream)
             log.set_filter("text")
             self.notify("Log filter: TEXT", severity="information")
+        except NoMatches:
+            pass
+
+    def action_focus_prompt(self) -> None:
+        """Focus the prompt input field."""
+        try:
+            prompt = self.query_one("#prompt-field", Input)
+            prompt.focus()
+            self.notify("Type task and press Enter", severity="information")
+        except NoMatches:
+            pass
+
+    def action_toggle_validation(self) -> None:
+        """Toggle validation gate panel visibility."""
+        try:
+            panel = self.query_one("#validation-gate-widget", ValidationGatePanel)
+            panel.toggle_class("hidden")
+        except NoMatches:
+            pass
+
+    def action_toggle_context(self) -> None:
+        """Toggle context explorer visibility."""
+        try:
+            panel = self.query_one("#context-explorer-widget", ContextExplorer)
+            panel.toggle_class("hidden")
         except NoMatches:
             pass
 

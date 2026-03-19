@@ -7,7 +7,7 @@ from .client import (
     PUPPETEER_TOOLS,
     create_sdk_client,
 )
-from .orchestrator import AgentOrchestrator, run_autonomous_agent
+from .orchestrator_v1 import AgentOrchestrator
 from .session import ProjectState, SessionState, get_project_state
 from .streaming import EventType, StreamBuffer, StreamEvent, StreamingHandler
 
@@ -31,5 +31,4 @@ __all__ = [
     "load_prompt_template",
     # Orchestrator
     "AgentOrchestrator",
-    "run_autonomous_agent",
 ]

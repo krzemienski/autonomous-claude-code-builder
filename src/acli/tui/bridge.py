@@ -9,12 +9,13 @@ No mocks. No fakes. Reads live StreamBuffer events and orchestrator state.
 import asyncio
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
-from ..core.orchestrator import AgentOrchestrator
+from ..core.orchestrator_v2 import EnhancedOrchestrator as AgentOrchestrator
 from ..core.session import get_project_state
 from ..core.streaming import EventType, StreamBuffer, StreamEvent
 
@@ -70,6 +71,8 @@ class OrchestratorSnapshot:
     total_tool_calls: int = 0
     total_errors: int = 0
     events_processed: int = 0
+    context_summary: str = ""
+    gate_results: list[dict] = field(default_factory=list)
 
 
 class OrchestratorBridge:
@@ -249,6 +252,29 @@ class OrchestratorBridge:
         elif event.type == EventType.TEXT:
             if self._current_agent:
                 self._current_agent.last_text = event.text[:500]
+
+        elif event.type == EventType.GATE_START:
+            self._snapshot.gate_results.append({
+                "gate_id": event.gate_id,
+                "status": "RUNNING",
+            })
+
+        elif event.type == EventType.GATE_RESULT:
+            for gate in self._snapshot.gate_results:
+                if gate["gate_id"] == event.gate_id:
+                    gate["status"] = event.gate_status
+                    break
+            else:
+                self._snapshot.gate_results.append({
+                    "gate_id": event.gate_id,
+                    "status": event.gate_status,
+                })
+
+        elif event.type == EventType.CONTEXT_UPDATE:
+            self._snapshot.context_summary = event.text
+
+        elif event.type == EventType.MEMORY_UPDATE:
+            self._snapshot.context_summary += f"\nMemory: {event.memory_fact}"
 
         # Notify TUI callbacks
         for cb in self._callbacks:

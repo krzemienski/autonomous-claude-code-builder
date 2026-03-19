@@ -406,3 +406,41 @@ Sparkline > .sparkline--max-color {
 .glow-green:hover {
     border: heavy #00ff41;
 }
+
+/* ── v2 Widgets ───────────────────────────────────────── */
+
+/* Context Explorer */
+ContextExplorer, #context-explorer-widget {
+    height: 1fr;
+    border: solid #133e7c;
+    background: #000b1e;
+    padding: 1;
+}
+
+/* Validation Gate Panel */
+ValidationGatePanel, #validation-gate-widget {
+    height: 1fr;
+    border: solid #133e7c;
+    background: #000b1e;
+    padding: 1;
+}
+
+/* Prompt Input */
+PromptInput, #prompt-input-widget {
+    height: 3;
+    dock: bottom;
+    border-top: solid #0abdc6;
+    background: #0a0a2e;
+    padding: 0 1;
+}
+
+PromptInput Input {
+    background: #000b1e;
+    color: #d7fffe;
+    border: none;
+}
+
+/* Hidden class for toggle */
+.hidden {
+    display: none;
+}

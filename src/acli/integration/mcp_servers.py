@@ -90,7 +90,7 @@ class MCPServerManager:
                         args=config.get("args", []),
                         env=config.get("env", {}),
                     )
-            except (json.JSONDecodeError, IOError):
+            except (OSError, json.JSONDecodeError):
                 pass
 
         self._loaded = True

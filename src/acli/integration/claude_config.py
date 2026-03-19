@@ -76,7 +76,7 @@ def discover_claude_config() -> ClaudeConfig:
                 data = json.load(f)
             config.api_key = data.get("api_key")
             config.default_model = data.get("model")
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             pass
 
     # Read settings.json
@@ -84,7 +84,7 @@ def discover_claude_config() -> ClaudeConfig:
         try:
             with open(config.settings_file) as f:
                 config.settings = json.load(f)
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             pass
 
     # Read MCP servers
@@ -92,7 +92,7 @@ def discover_claude_config() -> ClaudeConfig:
         try:
             with open(config.mcp_servers_file) as f:
                 config.mcp_servers = json.load(f)
-        except (json.JSONDecodeError, IOError):
+        except (OSError, json.JSONDecodeError):
             pass
 
     # Override with environment
@@ -112,7 +112,7 @@ def get_api_key() -> str | None:
 def get_default_model() -> str:
     """Get default model from config or use fallback."""
     config = discover_claude_config()
-    return config.default_model or "claude-sonnet-4-20250514"
+    return config.default_model or "claude-sonnet-4-6"
 
 
 def get_mcp_servers() -> dict[str, Any]:
