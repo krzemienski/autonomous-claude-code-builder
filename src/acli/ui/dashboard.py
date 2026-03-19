@@ -8,7 +8,6 @@ Coordinates tool board, logs, and progress panels.
 
 import asyncio
 from datetime import datetime
-from typing import Any
 
 from rich.console import Console
 from rich.layout import Layout
@@ -20,7 +19,7 @@ from ..core.streaming import StreamBuffer, StreamEvent, EventType
 from .tool_board import ToolBoard
 from .logs import LogPanel, LogLevel
 from .progress import ProgressPanel
-from .themes import Theme, get_theme
+from .themes import get_theme
 
 
 class Dashboard:
